@@ -1,0 +1,38 @@
+[debug] [2026-09-11T18:22:15.634Z] : 
+[debug] [2026-09-11T18:22:15.652Z] : ----------------------------------------------------------------------
+[debug] [2026-09-11T18:22:15.668Z] : Command:      C:\Program Files\nodejs\node.exe C:\Users\starnet\AppData\Roaming\npm\node_modules\zcatalyst-cli\lib\bin\catalyst.js init
+[debug] [2026-09-11T18:22:15.670Z] : CLI Version:  1.27.2
+[debug] [2026-09-11T18:22:15.674Z] : Platform:     win32
+[debug] [2026-09-11T18:22:15.694Z] : Node Version: v24.18.1
+[debug] [2026-09-11T18:22:15.699Z] : Time:         Fri Sep 11 2026 21:22:15 GMT+0300 (Eastern European Summer Time)
+[debug] [2026-09-11T18:22:15.699Z] : ----------------------------------------------------------------------
+[debug] [2026-09-11T18:22:15.700Z] : 
+[debug] [2026-09-11T18:22:30.123Z] : > authorizing via signed-in user option
+[debug] [2026-09-11T18:22:30.129Z] : > command requires scopes: ["ZohoCatalyst.projects.ALL","ZohoCatalyst.projects.ALL","ZohoCatalyst.project.import.CREATE"]
+[debug] [2026-09-11T18:22:32.010Z] : >>>> HTTP REQUEST : GET https://api.catalyst.zoho.com/baas/v1/project/103747000000014023 
+
+[error] [2026-09-11T18:22:49.932Z] : × API Error: connect ECONNREFUSED 204.141.43.162:443
+[debug] [2026-09-11T18:22:49.936Z] : Error Stack: CatalystError: API Error: connect ECONNREFUSED 204.141.43.162:443
+    at API.<anonymous> (C:\Users\starnet\AppData\Roaming\npm\node_modules\zcatalyst-cli\lib\internal\api.js:247:32)
+    at Generator.next (<anonymous>)
+    at C:\Users\starnet\AppData\Roaming\npm\node_modules\zcatalyst-cli\lib\internal\api.js:41:71
+    at new Promise (<anonymous>)
+    at __awaiter (C:\Users\starnet\AppData\Roaming\npm\node_modules\zcatalyst-cli\lib\internal\api.js:37:12)
+    at Request._callback (C:\Users\starnet\AppData\Roaming\npm\node_modules\zcatalyst-cli\lib\internal\api.js:225:67)
+    at self.callback (C:\Users\starnet\AppData\Roaming\npm\node_modules\zcatalyst-cli\node_modules\request\request.js:185:22)
+    at Request.emit (node:events:509:28)
+    at Request.onRequestError (C:\Users\starnet\AppData\Roaming\npm\node_modules\zcatalyst-cli\node_modules\request\request.js:877:8)
+    at ClientRequest.emit (node:events:509:28)
+[debug] [2026-09-11T18:22:49.938Z] : Original Error: Error: connect ECONNREFUSED 204.141.43.162:443
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1706:16) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '204.141.43.162',
+  port: 443
+}
+[debug] [2026-09-11T18:22:49.940Z] : Error Status: 500
+[info] [2026-09-11T18:22:49.942Z] : Kindly contact Catalyst support [support@zohocatalyst.com] if you need any further assistance
+[debug] [2026-09-11T18:22:49.946Z] : EXEC ENDED with event: Error (Unexpected), message: API Error: connect ECONNREFUSED 204.141.43.162:443
+[debug] [2026-09-11T18:22:49.947Z] : TOTAL DURATION OF COMMAND EXEC : 20091
+[debug] [2026-09-11T18:22:49.958Z] : Unable to initialise the log API
