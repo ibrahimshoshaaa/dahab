@@ -27,11 +27,8 @@ export default function CartPage() {
       <header className="sticky top-0 z-50 border-b border-black/10 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
 
-          <Link
-            href="/"
-            className="font-serif text-3xl tracking-widest"
-          >
-            DAHAB
+          <Link href="/" className="flex items-center">
+            <img src="/logo.png" alt="دهب" className="h-10 w-auto object-contain" />
           </Link>
 
           <div className="flex items-center gap-5">

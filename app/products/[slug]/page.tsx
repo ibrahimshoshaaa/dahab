@@ -1,6 +1,6 @@
 "use client"
 
-import { use, useEffect, useState } from "react"
+import { use, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import {
   ArrowRight,
@@ -55,6 +55,27 @@ export default function ProductDetails({
   }, [slug])
 
   const galleryImages = product?.images?.length ? product.images : product ? [product.image] : []
+
+  const galleryTouchStartX = useRef<number | null>(null)
+
+  function handleGalleryTouchStart(e: React.TouchEvent) {
+    galleryTouchStartX.current = e.touches[0].clientX
+  }
+
+  function handleGalleryTouchEnd(e: React.TouchEvent) {
+    if (galleryTouchStartX.current === null || galleryImages.length <= 1) return
+    const delta = e.changedTouches[0].clientX - galleryTouchStartX.current
+    const threshold = 40
+    const total = galleryImages.length
+
+    if (delta < -threshold) {
+      setActiveImage((current) => (current + 1) % total)
+    } else if (delta > threshold) {
+      setActiveImage((current) => (current - 1 + total) % total)
+    }
+
+    galleryTouchStartX.current = null
+  }
 
   if (!product && !loading) {
     return (
@@ -116,11 +137,8 @@ export default function ProductDetails({
       <header className="sticky top-0 z-50 border-b border-black/10 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
 
-          <Link
-            href="/"
-            className="font-serif text-3xl tracking-widest"
-          >
-            DAHAB
+          <Link href="/" className="flex items-center">
+            <img src="/logo.png" alt="دهب" className="h-10 w-auto object-contain" />
           </Link>
 
           <Link
@@ -148,12 +166,30 @@ export default function ProductDetails({
           {/* صورة المنتج */}
 
           <div>
-            <div className="overflow-hidden rounded-3xl bg-white">
+            <div
+              className="relative aspect-[4/5] touch-pan-y select-none overflow-hidden rounded-3xl bg-white"
+              onTouchStart={handleGalleryTouchStart}
+              onTouchEnd={handleGalleryTouchEnd}
+            >
               <img
                 src={galleryImages[activeImage] || product.image}
                 alt={product.name}
-                className="h-full max-h-[700px] w-full object-cover"
+                className="h-full w-full object-cover"
+                draggable={false}
               />
+
+              {galleryImages.length > 1 && (
+                <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
+                  {galleryImages.map((_, index) => (
+                    <span
+                      key={index}
+                      className={`h-1.5 rounded-full transition-all ${
+                        activeImage === index ? "w-5 bg-white" : "w-1.5 bg-white/60"
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
             {galleryImages.length > 1 && (

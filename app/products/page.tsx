@@ -59,8 +59,8 @@ export default function ProductsPage() {
     <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
       <header className="border-b border-black/10 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
-          <Link href="/" className="font-serif text-3xl tracking-widest">
-            DAHAB
+          <Link href="/" className="flex items-center">
+            <img src="/logo.png" alt="دهب" className="h-10 w-auto object-contain" />
           </Link>
 
           <nav className="hidden gap-8 md:flex">
@@ -110,7 +110,7 @@ export default function ProductsPage() {
 
           <div className="absolute inset-y-0 right-0 flex w-72 max-w-[85%] flex-col bg-white px-6 py-6 shadow-xl">
             <div className="mb-8 flex items-center justify-between">
-              <div className="font-serif text-2xl tracking-widest">DAHAB</div>
+              <img src="/logo.png" alt="دهب" className="h-9 w-auto object-contain" />
               <button
                 onClick={() => setMobileMenuOpen(false)}
                 aria-label="إغلاق القائمة"

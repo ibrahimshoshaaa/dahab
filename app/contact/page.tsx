@@ -76,8 +76,8 @@ export default function ContactPage() {
     <main dir="rtl" className="min-h-screen bg-[var(--bg)] text-[var(--ink)]">
       <header className="border-b border-black/10 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
-          <Link href="/" className="font-serif text-3xl tracking-widest">
-            DAHAB
+          <Link href="/" className="flex items-center">
+            <img src="/logo.png" alt="دهب" className="h-10 w-auto object-contain" />
           </Link>
 
           <Link

@@ -5,6 +5,7 @@ import Link from "next/link"
 import { fetchProducts, fetchSettings, type SiteSettings } from "./lib/api"
 import { useCart } from "./context/CartContext"
 import { useFavorites } from "./context/FavoritesContext"
+import ProductCardImages from "./components/ProductCardImages"
 
 import { Search, Heart, ShoppingBag, Menu, X, ArrowLeft, Truck, RotateCcw, ShieldCheck } from "lucide-react";
 
@@ -105,11 +106,8 @@ export default function Home() {
             </nav>
           </div>
 
-          <a href="#" className="justify-self-center text-center">
-            <div className="font-serif text-3xl tracking-[0.2em]">DAHAB</div>
-            <div className="mt-1 text-[9px] tracking-[0.5em] text-[var(--brand)]">
-              دهب
-            </div>
+          <a href="#" className="justify-self-center flex items-center justify-center">
+            <img src="/logo.png" alt="دهب" className="h-11 w-auto object-contain sm:h-12" />
           </a>
 
           <div className="flex items-center justify-self-end gap-4">
@@ -148,7 +146,7 @@ export default function Home() {
 
           <div className="absolute inset-y-0 right-0 flex w-72 max-w-[85%] flex-col bg-[var(--bg)] px-6 py-6 shadow-xl">
             <div className="mb-8 flex items-center justify-between">
-              <div className="font-serif text-2xl tracking-[0.2em]">DAHAB</div>
+              <img src="/logo.png" alt="دهب" className="h-9 w-auto object-contain" />
               <button
                 onClick={() => setMobileMenuOpen(false)}
                 aria-label="إغلاق القائمة"
@@ -304,10 +302,10 @@ export default function Home() {
             {products.map((product) => (
               <Link key={product.slug} href={`/products/${product.slug}`} className="group block">
                 <div className="relative aspect-[3/4] overflow-hidden bg-[var(--surface)]">
-                  <img
-                    src={product.image}
+                  <ProductCardImages
+                    images={product.images?.length ? product.images : [product.image]}
                     alt={product.name}
-                    className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                    imgClassName="h-full w-full object-cover transition duration-700 group-hover:scale-105"
                   />
                   <span className="absolute right-3 top-3 bg-white px-3 py-1.5 text-[10px]">
                     {product.badge}
@@ -448,8 +446,7 @@ export default function Home() {
         <div className="mx-auto grid max-w-7xl gap-12 md:grid-cols-4">
 
           <div className="md:col-span-2">
-            <div className="font-serif text-3xl tracking-[0.2em]">DAHAB</div>
-            <div className="mt-1 text-[9px] tracking-[0.5em] text-[var(--brand-mid)]">دهب</div>
+            <img src="/logo.png" alt="دهب" className="h-10 w-auto object-contain" />
             <p className="mt-5 max-w-sm text-sm leading-8 text-white/50">
               {s(settings, "footer_description")}
             </p>
