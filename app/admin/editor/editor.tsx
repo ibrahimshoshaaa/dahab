@@ -112,14 +112,14 @@ export default function AdminPagesEditor() {
     <button
       onClick={handleSave}
       disabled={saving}
-      className={`rounded-xl bg-[#171512] px-6 py-3 text-sm text-white transition hover:bg-[#a48343] disabled:opacity-50 ${className}`}
+      className={`rounded-xl bg-[var(--ink)] px-6 py-3 text-sm text-white transition hover:bg-[var(--brand)] disabled:opacity-50 ${className}`}
     >
       {saving ? "جارِ الحفظ..." : saved ? "✓ تم الحفظ" : "حفظ التغييرات"}
     </button>
   )
 
   return (
-    <main dir="rtl" className="min-h-screen bg-[#faf8f4]">
+    <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
       <header className="border-b border-black/10 bg-white">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-5 py-5">
           <div className="font-serif text-2xl tracking-widest">
@@ -161,7 +161,7 @@ export default function AdminPagesEditor() {
           <div className="space-y-10">
             {GROUPS.map((group) => (
               <div key={group.title}>
-                <h2 className="mb-4 text-sm font-semibold text-[#a48343]">
+                <h2 className="mb-4 text-sm font-semibold text-[var(--brand)]">
                   {group.title}
                 </h2>
 
@@ -182,14 +182,14 @@ export default function AdminPagesEditor() {
                             value={value}
                             onChange={(e) => handleChange(key, e.target.value)}
                             rows={4}
-                            className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-[#a48343]"
+                            className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
                           />
                         ) : (
                           <input
                             type="text"
                             value={value}
                             onChange={(e) => handleChange(key, e.target.value)}
-                            className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-[#a48343]"
+                            className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
                           />
                         )}
                       </div>

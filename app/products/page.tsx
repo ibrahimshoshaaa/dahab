@@ -49,14 +49,14 @@ export default function ProductsPage() {
 
   if (!isLoaded) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#faf8f4]">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#a07845] border-t-transparent" />
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--brand-dark)] border-t-transparent" />
       </div>
     )
   }
 
   return (
-    <main dir="rtl" className="min-h-screen bg-[#faf8f4]">
+    <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
       <header className="border-b border-black/10 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
           <Link href="/" className="font-serif text-3xl tracking-widest">
@@ -82,7 +82,7 @@ export default function ProductsPage() {
             <Link href="/favorites" className="relative">
               <Heart size={21} />
               {favoritesMounted && favoritesCount > 0 && (
-                <span className="absolute -right-2 -top-2 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#a07845] px-[3px] text-[9px] leading-none text-white">
+                <span className="absolute -right-2 -top-2 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--brand-dark)] px-[3px] text-[9px] leading-none text-white">
                   {favoritesCount}
                 </span>
               )}
@@ -155,7 +155,7 @@ export default function ProductsPage() {
 
       <section className="mx-auto max-w-7xl px-5 py-14">
         <div className="mb-10 text-center">
-          <p className="mb-3 text-sm tracking-[0.3em] text-[#a07845]">
+          <p className="mb-3 text-sm tracking-[0.3em] text-[var(--brand-dark)]">
             DAHAB COLLECTION
           </p>
 
@@ -239,7 +239,7 @@ export default function ProductsPage() {
                   <Heart
                     size={16}
                     strokeWidth={1.5}
-                    className={isFavorite(product.id) ? "fill-[#a07845] text-[#a07845]" : ""}
+                    className={isFavorite(product.id) ? "fill-[var(--brand-dark)] text-[var(--brand-dark)]" : ""}
                   />
                 </button>
               </div>

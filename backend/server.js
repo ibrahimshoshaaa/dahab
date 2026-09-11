@@ -156,7 +156,7 @@ app.post("/api/admin/products", requireAdmin, async (req, res) => {
              featured ? 1 : 0, bestSeller ? 1 : 0, active === false ? 0 : 1,
              JSON.stringify(sizeChart || {}), materialDetails || "", careInstructions || ""]
     })
-    res.status(201).json({ success: true, id: result.lastInsertRowid, slug })
+    res.status(201).json({ success: true, id: Number(result.lastInsertRowid), slug })
   } catch (error) {
     console.error(error)
     res.status(500).json({ success: false, message: "حدث خطأ أثناء إضافة المنتج" })
@@ -242,7 +242,7 @@ app.post("/api/orders", async (req, res) => {
       sql: `INSERT INTO orders (customer_name,phone,governorate,area,address,notes,total,tracking_code) VALUES (?,?,?,?,?,?,?,?)`,
       args: [customer_name, phone, governorate, area, address, notes || "", Number(total), trackingCode]
     })
-    const orderId = orderResult.lastInsertRowid
+    const orderId = Number(orderResult.lastInsertRowid)
 
     for (const item of items) {
       await db.execute({
@@ -307,7 +307,7 @@ app.post("/api/contact", async (req, res) => {
     const { name, phone, message } = req.body || {}
     if (!name || !phone || !message) return res.status(400).json({ success: false, message: "من فضلك أكملي كل الحقول" })
     const result = await db.execute({ sql: "INSERT INTO contact_messages (name,phone,message) VALUES (?,?,?)", args: [name, phone, message] })
-    res.json({ success: true, id: result.lastInsertRowid })
+    res.json({ success: true, id: Number(result.lastInsertRowid) })
   } catch (error) {
     console.error(error)
     res.status(500).json({ success: false, message: "حدث خطأ أثناء إرسال الرسالة" })

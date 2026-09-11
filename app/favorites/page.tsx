@@ -10,7 +10,7 @@ export default function FavoritesPage() {
   const { addToCart } = useCart()
 
   return (
-    <main dir="rtl" className="min-h-screen bg-[#faf8f4]">
+    <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
       <header className="sticky top-0 z-50 border-b border-black/10 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
           <Link href="/" className="font-serif text-3xl tracking-widest">
@@ -29,7 +29,7 @@ export default function FavoritesPage() {
 
       <section className="mx-auto max-w-7xl px-5 py-10">
         <div className="mb-10">
-          <p className="mb-2 text-sm text-[#a07845]">DAHAB STORE</p>
+          <p className="mb-2 text-sm text-[var(--brand-dark)]">DAHAB STORE</p>
           <h1 className="font-serif text-4xl md:text-5xl">المفضلة</h1>
 
           {mounted && favorites.length > 0 && (
@@ -41,7 +41,7 @@ export default function FavoritesPage() {
 
         {!mounted || favorites.length === 0 ? (
           <div className="flex min-h-[450px] flex-col items-center justify-center rounded-3xl border border-black/5 bg-white px-5 text-center">
-            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#faf8f4]">
+            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--bg)]">
               <Heart size={32} strokeWidth={1.3} />
             </div>
 
@@ -54,7 +54,7 @@ export default function FavoritesPage() {
 
             <Link
               href="/products"
-              className="mt-7 flex items-center gap-3 rounded-full bg-black px-7 py-3.5 text-sm text-white transition hover:bg-[#a07845]"
+              className="mt-7 flex items-center gap-3 rounded-full bg-black px-7 py-3.5 text-sm text-white transition hover:bg-[var(--brand-dark)]"
             >
               اكتشف المنتجات
               <ArrowLeft size={18} />

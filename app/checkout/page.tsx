@@ -110,7 +110,7 @@ export default function CheckoutPage() {
 
   if (cart.length === 0 && !submitted) {
     return (
-      <main dir="rtl" className="min-h-screen bg-[#faf8f4]">
+      <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
         <header className="border-b border-black/10 bg-white">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
             <Link
@@ -163,7 +163,7 @@ export default function CheckoutPage() {
     return (
       <main
         dir="rtl"
-        className="flex min-h-screen items-center justify-center bg-[#faf8f4] px-5"
+        className="flex min-h-screen items-center justify-center bg-[var(--bg)] px-5"
       >
         <div className="w-full max-w-xl rounded-3xl bg-white p-8 text-center shadow-sm sm:p-12">
 
@@ -175,7 +175,7 @@ export default function CheckoutPage() {
             />
           </div>
 
-          <p className="text-sm text-[#a07845]">
+          <p className="text-sm text-[var(--brand-dark)]">
             DAHAB STORE
           </p>
 
@@ -188,7 +188,7 @@ export default function CheckoutPage() {
             وسنتواصل معك على رقم الهاتف لتأكيد الطلب والتوصيل.
           </p>
 
-          <div className="mt-7 rounded-2xl bg-[#faf8f4] p-5">
+          <div className="mt-7 rounded-2xl bg-[var(--bg)] p-5">
             {trackingCode && (
               <div className="mb-4">
                 <p className="mb-2 text-sm text-gray-500">
@@ -255,7 +255,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <main dir="rtl" className="min-h-screen bg-[#faf8f4]">
+    <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
 
       <header className="sticky top-0 z-50 border-b border-black/10 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
@@ -281,7 +281,7 @@ export default function CheckoutPage() {
       <section className="mx-auto max-w-7xl px-5 py-10">
 
         <div className="mb-10">
-          <p className="mb-2 text-sm text-[#a07845]">
+          <p className="mb-2 text-sm text-[var(--brand-dark)]">
             DAHAB STORE
           </p>
 
@@ -305,7 +305,7 @@ export default function CheckoutPage() {
               <div className="rounded-3xl border border-black/5 bg-white p-6 sm:p-8">
 
                 <div className="mb-7 flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#faf8f4]">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--bg)]">
                     <User size={20} strokeWidth={1.5} />
                   </div>
 
@@ -372,7 +372,7 @@ export default function CheckoutPage() {
               <div className="rounded-3xl border border-black/5 bg-white p-6 sm:p-8">
 
                 <div className="mb-7 flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#faf8f4]">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--bg)]">
                     <MapPin size={20} strokeWidth={1.5} />
                   </div>
 
@@ -447,7 +447,7 @@ export default function CheckoutPage() {
               <div className="rounded-3xl border border-black/5 bg-white p-6 sm:p-8">
 
                 <div className="mb-5 flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#faf8f4]">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--bg)]">
                     <FileText size={20} strokeWidth={1.5} />
                   </div>
 
@@ -484,7 +484,7 @@ export default function CheckoutPage() {
                   ملخص الطلب
                 </h2>
 
-                <span className="rounded-full bg-[#faf8f4] px-3 py-1 text-xs">
+                <span className="rounded-full bg-[var(--bg)] px-3 py-1 text-xs">
                   {cart.length} منتجات
                 </span>
 
@@ -499,7 +499,7 @@ export default function CheckoutPage() {
                     className="flex gap-3"
                   >
 
-                    <div className="h-20 w-16 shrink-0 overflow-hidden rounded-xl bg-[#f0ede7]">
+                    <div className="h-20 w-16 shrink-0 overflow-hidden rounded-xl bg-[var(--surface)]">
                       <img
                         src={item.image}
                         alt={item.name}
@@ -579,7 +579,7 @@ export default function CheckoutPage() {
 
                 <div className="flex items-center gap-3">
 
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#faf8f4]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--bg)]">
                     <ShoppingBag size={18} />
                   </div>
 
@@ -606,7 +606,7 @@ export default function CheckoutPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="mt-6 flex w-full items-center justify-center gap-3 rounded-full bg-black py-4 text-sm text-white transition hover:bg-[#a07845] disabled:opacity-60"
+                className="mt-6 flex w-full items-center justify-center gap-3 rounded-full bg-black py-4 text-sm text-white transition hover:bg-[var(--brand-dark)] disabled:opacity-60"
               >
                 {submitting ? "جارِ إرسال الطلب..." : "تأكيد الطلب"}
                 {!submitting && <ArrowLeft size={18} />}

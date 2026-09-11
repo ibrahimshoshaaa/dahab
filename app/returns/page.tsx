@@ -44,8 +44,8 @@ export default function ReturnsPage() {
 
   if (!isLoaded) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#faf8f4]">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#a48343] border-t-transparent" />
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--brand)] border-t-transparent" />
       </div>
     )
   }
@@ -55,7 +55,7 @@ export default function ReturnsPage() {
   const periodDays = s(settings, "returns_period_days")
 
   return (
-    <main dir="rtl" className="min-h-screen bg-[#faf8f4] text-[#171512]">
+    <main dir="rtl" className="min-h-screen bg-[var(--bg)] text-[var(--ink)]">
       <header className="border-b border-black/10 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
           <Link href="/" className="font-serif text-3xl tracking-widest">
@@ -74,7 +74,7 @@ export default function ReturnsPage() {
 
       <section className="mx-auto max-w-4xl px-5 py-16">
         <div className="mb-14 text-center">
-          <p className="mb-3 text-[11px] tracking-[0.3em] text-[#a48343]">
+          <p className="mb-3 text-[11px] tracking-[0.3em] text-[var(--brand)]">
             RETURNS &amp; EXCHANGE
           </p>
           <h1 className="font-serif text-4xl md:text-5xl">
@@ -86,8 +86,8 @@ export default function ReturnsPage() {
           </p>
         </div>
 
-        <div className="mb-12 flex flex-col items-center gap-4 rounded-2xl bg-[#171512] p-10 text-center text-white sm:flex-row sm:text-right">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#a48343]/20 text-[#e8d19b]">
+        <div className="mb-12 flex flex-col items-center gap-4 rounded-2xl bg-[var(--ink)] p-10 text-center text-white sm:flex-row sm:text-right">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[var(--brand)]/20 text-[var(--brand-soft)]">
             <RotateCcw size={26} />
           </div>
           <div>
@@ -151,7 +151,7 @@ export default function ReturnsPage() {
               ],
             ].map(([num, title, desc]) => (
               <div key={num} className="text-center">
-                <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full border border-[#a48343] text-sm text-[#a48343]">
+                <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full border border-[var(--brand)] text-sm text-[var(--brand)]">
                   {num}
                 </div>
                 <h4 className="mb-2 text-sm font-medium">{title}</h4>
@@ -163,13 +163,13 @@ export default function ReturnsPage() {
 
         <div className="flex flex-col items-center justify-between gap-5 rounded-2xl border border-black/5 bg-white p-7 sm:flex-row">
           <div className="flex items-center gap-3 text-sm text-gray-500">
-            <MessageCircle size={20} className="text-[#a48343]" />
+            <MessageCircle size={20} className="text-[var(--brand)]" />
             <span>لسه عندك استفسار عن طلب استبدال أو استرجاع؟</span>
           </div>
 
           <Link
             href="/contact"
-            className="rounded-full bg-[#171512] px-6 py-3 text-sm text-white transition hover:bg-[#a48343]"
+            className="rounded-full bg-[var(--ink)] px-6 py-3 text-sm text-white transition hover:bg-[var(--brand)]"
           >
             تواصل معنا
           </Link>

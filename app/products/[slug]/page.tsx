@@ -60,7 +60,7 @@ export default function ProductDetails({
     return (
       <main
         dir="rtl"
-        className="flex min-h-screen items-center justify-center bg-[#faf8f4]"
+        className="flex min-h-screen items-center justify-center bg-[var(--bg)]"
       >
         <div className="text-center">
           <h1 className="mb-4 text-2xl font-semibold">
@@ -82,7 +82,7 @@ export default function ProductDetails({
     return (
       <main
         dir="rtl"
-        className="flex min-h-screen items-center justify-center bg-[#faf8f4]"
+        className="flex min-h-screen items-center justify-center bg-[var(--bg)]"
       >
         <p className="text-sm text-gray-500">جارِ التحميل...</p>
       </main>
@@ -111,7 +111,7 @@ export default function ProductDetails({
   }
 
   return (
-    <main dir="rtl" className="min-h-screen bg-[#faf8f4]">
+    <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
 
       <header className="sticky top-0 z-50 border-b border-black/10 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
@@ -164,7 +164,7 @@ export default function ProductDetails({
                     onClick={() => setActiveImage(index)}
                     className={`h-20 w-20 overflow-hidden rounded-xl border-2 transition ${
                       activeImage === index
-                        ? "border-[#a07845]"
+                        ? "border-[var(--brand-dark)]"
                         : "border-transparent"
                     }`}
                   >
@@ -183,7 +183,7 @@ export default function ProductDetails({
 
           <div className="flex flex-col justify-center">
 
-            <p className="mb-3 text-sm text-[#a07845]">
+            <p className="mb-3 text-sm text-[var(--brand-dark)]">
               {product.category}
             </p>
 
@@ -327,7 +327,7 @@ export default function ProductDetails({
 
                   <Link
                     href="/checkout"
-                    className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#a07845] py-4 text-white transition hover:bg-black"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[var(--brand-dark)] py-4 text-white transition hover:bg-black"
                   >
                     <Sparkles size={18} />
                     إتمام الطلب
@@ -336,7 +336,7 @@ export default function ProductDetails({
               ) : (
                 <button
                   onClick={handleAddToCart}
-                  className="flex flex-1 items-center justify-center gap-3 rounded-full bg-black py-4 text-white transition hover:bg-[#a07845]"
+                  className="flex flex-1 items-center justify-center gap-3 rounded-full bg-black py-4 text-white transition hover:bg-[var(--brand-dark)]"
                 >
                   <ShoppingBag size={20} />
                   إضافة للسلة
@@ -347,7 +347,7 @@ export default function ProductDetails({
                 onClick={() => toggleFavorite(product)}
                 className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full border transition ${
                   isFavorite(product.id)
-                    ? "border-[#a07845] bg-[#a07845] text-white"
+                    ? "border-[var(--brand-dark)] bg-[var(--brand-dark)] text-white"
                     : "border-gray-300 bg-white"
                 }`}
                 aria-label="إضافة للمفضلة"
@@ -360,7 +360,7 @@ export default function ProductDetails({
             {added && (
               <p className="mt-3 text-sm text-gray-500">
                 تقدري تكملي التسوق وتزودي حاجات تانية للسلة، أو تدخلي على السلة وتراجعيها قبل إتمام الطلب.{" "}
-                <Link href="/cart" className="text-[#a07845] underline">
+                <Link href="/cart" className="text-[var(--brand-dark)] underline">
                   عرض السلة
                 </Link>
               </p>
@@ -414,7 +414,7 @@ export default function ProductDetails({
                     .filter(Boolean)
                     .map((line, index) => (
                       <li key={index} className="flex items-start gap-2 text-gray-600">
-                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#a07845]" />
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--brand-dark)]" />
                         <span className="leading-6">{line}</span>
                       </li>
                     ))}
@@ -430,7 +430,7 @@ export default function ProductDetails({
                 <div className="overflow-x-auto rounded-xl border border-black/10">
                   <table className="w-full min-w-max border-collapse text-sm">
                     <thead>
-                      <tr className="bg-[#faf8f4]">
+                      <tr className="bg-[var(--bg)]">
                         {product.sizeChart.columns.map((col, index) => (
                           <th
                             key={index}
@@ -443,7 +443,7 @@ export default function ProductDetails({
                     </thead>
                     <tbody>
                       {product.sizeChart.rows.map((row, rowIndex) => (
-                        <tr key={rowIndex} className="odd:bg-white even:bg-[#faf8f4]/50">
+                        <tr key={rowIndex} className="odd:bg-white even:bg-[var(--bg)]/50">
                           {row.map((cell, cellIndex) => (
                             <td
                               key={cellIndex}

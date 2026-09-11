@@ -22,7 +22,7 @@ export default function CartPage() {
   } = useCart()
 
   return (
-    <main dir="rtl" className="min-h-screen bg-[#faf8f4]">
+    <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
 
       <header className="sticky top-0 z-50 border-b border-black/10 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
@@ -53,7 +53,7 @@ export default function CartPage() {
       <section className="mx-auto max-w-7xl px-5 py-10">
 
         <div className="mb-10">
-          <p className="mb-2 text-sm text-[#a07845]">
+          <p className="mb-2 text-sm text-[var(--brand-dark)]">
             DAHAB STORE
           </p>
 
@@ -72,7 +72,7 @@ export default function CartPage() {
 
           <div className="flex min-h-[450px] flex-col items-center justify-center rounded-3xl border border-black/5 bg-white px-5 text-center">
 
-            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#faf8f4]">
+            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--bg)]">
               <ShoppingBag size={32} strokeWidth={1.3} />
             </div>
 
@@ -87,7 +87,7 @@ export default function CartPage() {
 
             <Link
               href="/products"
-              className="mt-7 flex items-center gap-3 rounded-full bg-black px-7 py-3.5 text-sm text-white transition hover:bg-[#a07845]"
+              className="mt-7 flex items-center gap-3 rounded-full bg-black px-7 py-3.5 text-sm text-white transition hover:bg-[var(--brand-dark)]"
             >
               اكتشف المنتجات
               <ArrowLeft size={18} />
@@ -112,7 +112,7 @@ export default function CartPage() {
 
                     <Link
                       href={`/products/${item.slug}`}
-                      className="h-32 w-24 shrink-0 overflow-hidden rounded-2xl bg-[#f0ede7] sm:h-40 sm:w-32"
+                      className="h-32 w-24 shrink-0 overflow-hidden rounded-2xl bg-[var(--surface)] sm:h-40 sm:w-32"
                     >
                       <img
                         src={item.image}
@@ -126,7 +126,7 @@ export default function CartPage() {
                       <div className="flex items-start justify-between gap-3">
 
                         <div>
-                          <p className="text-xs text-[#a07845]">
+                          <p className="text-xs text-[var(--brand-dark)]">
                             {item.category}
                           </p>
 
@@ -157,13 +157,13 @@ export default function CartPage() {
                       <div className="mt-3 flex flex-wrap gap-2">
 
                         {item.selectedColor && (
-                          <span className="rounded-full bg-[#faf8f4] px-3 py-1 text-xs text-gray-600">
+                          <span className="rounded-full bg-[var(--bg)] px-3 py-1 text-xs text-gray-600">
                             اللون: {item.selectedColor}
                           </span>
                         )}
 
                         {item.selectedSize && (
-                          <span className="rounded-full bg-[#faf8f4] px-3 py-1 text-xs text-gray-600">
+                          <span className="rounded-full bg-[var(--bg)] px-3 py-1 text-xs text-gray-600">
                             المقاس: {item.selectedSize}
                           </span>
                         )}
@@ -278,7 +278,7 @@ export default function CartPage() {
 
               <Link
                 href="/checkout"
-                className="mt-7 flex w-full items-center justify-center gap-3 rounded-full bg-black py-4 text-sm text-white transition hover:bg-[#a07845]"
+                className="mt-7 flex w-full items-center justify-center gap-3 rounded-full bg-black py-4 text-sm text-white transition hover:bg-[var(--brand-dark)]"
               >
                 إتمام الطلب
                 <ArrowLeft size={18} />
@@ -286,12 +286,12 @@ export default function CartPage() {
 
               <Link
                 href="/products"
-                className="mt-3 flex w-full items-center justify-center rounded-full border border-black/10 py-3.5 text-sm transition hover:bg-[#faf8f4]"
+                className="mt-3 flex w-full items-center justify-center rounded-full border border-black/10 py-3.5 text-sm transition hover:bg-[var(--bg)]"
               >
                 متابعة التسوق
               </Link>
 
-              <div className="mt-6 rounded-2xl bg-[#faf8f4] p-4 text-center">
+              <div className="mt-6 rounded-2xl bg-[var(--bg)] p-4 text-center">
                 <p className="text-xs leading-6 text-gray-500">
                   الدفع عند الاستلام متاح لجميع المحافظات
                 </p>

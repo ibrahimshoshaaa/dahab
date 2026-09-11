@@ -66,14 +66,14 @@ export default function ContactPage() {
 
   if (!isLoaded) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#faf8f4]">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#a48343] border-t-transparent" />
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--brand)] border-t-transparent" />
       </div>
     )
   }
 
   return (
-    <main dir="rtl" className="min-h-screen bg-[#faf8f4] text-[#171512]">
+    <main dir="rtl" className="min-h-screen bg-[var(--bg)] text-[var(--ink)]">
       <header className="border-b border-black/10 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
           <Link href="/" className="font-serif text-3xl tracking-widest">
@@ -92,7 +92,7 @@ export default function ContactPage() {
 
       <section className="mx-auto max-w-6xl px-5 py-16">
         <div className="mb-14 text-center">
-          <p className="mb-3 text-[11px] tracking-[0.3em] text-[#a48343]">
+          <p className="mb-3 text-[11px] tracking-[0.3em] text-[var(--brand)]">
             GET IN TOUCH
           </p>
           <h1 className="font-serif text-4xl md:text-5xl">تواصل معنا</h1>
@@ -106,7 +106,7 @@ export default function ContactPage() {
           {/* بيانات التواصل */}
           <div className="space-y-6 lg:col-span-2">
             <div className="flex items-start gap-4 rounded-2xl bg-white p-6 shadow-sm">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#faf3e3] text-[#a48343]">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--brand-tint)] text-[var(--brand)]">
                 <Phone size={19} />
               </div>
               <div>
@@ -121,7 +121,7 @@ export default function ContactPage() {
             </div>
 
             <div className="flex items-start gap-4 rounded-2xl bg-white p-6 shadow-sm">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#faf3e3] text-[#a48343]">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--brand-tint)] text-[var(--brand)]">
                 <Mail size={19} />
               </div>
               <div>
@@ -133,7 +133,7 @@ export default function ContactPage() {
             </div>
 
             <div className="flex items-start gap-4 rounded-2xl bg-white p-6 shadow-sm">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#faf3e3] text-[#a48343]">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--brand-tint)] text-[var(--brand)]">
                 <MapPin size={19} />
               </div>
               <div>
@@ -145,7 +145,7 @@ export default function ContactPage() {
             </div>
 
             <div className="flex items-start gap-4 rounded-2xl bg-white p-6 shadow-sm">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#faf3e3] text-[#a48343]">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--brand-tint)] text-[var(--brand)]">
                 <Clock size={19} />
               </div>
               <div>
@@ -161,7 +161,7 @@ export default function ContactPage() {
                 href={s(settings, "contact_instagram_url")}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#171512] text-xs font-medium text-white transition hover:bg-[#a48343]"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--ink)] text-xs font-medium text-white transition hover:bg-[var(--brand)]"
               >
                 IG
               </a>
@@ -169,7 +169,7 @@ export default function ContactPage() {
                 href={s(settings, "contact_facebook_url")}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#171512] text-xs font-medium text-white transition hover:bg-[#a48343]"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--ink)] text-xs font-medium text-white transition hover:bg-[var(--brand)]"
               >
                 f
               </a>
@@ -192,7 +192,7 @@ export default function ContactPage() {
                   </p>
                   <button
                     onClick={() => setSent(false)}
-                    className="mt-6 text-sm text-[#a48343] hover:underline"
+                    className="mt-6 text-sm text-[var(--brand)] hover:underline"
                   >
                     إرسال رسالة تانية
                   </button>
@@ -213,7 +213,7 @@ export default function ContactPage() {
                       onChange={(e) => setName(e.target.value)}
                       required
                       placeholder="اكتبي اسمك"
-                      className="w-full rounded-xl border border-black/10 bg-[#faf8f4] px-4 py-3 text-sm outline-none focus:border-[#a48343]"
+                      className="w-full rounded-xl border border-black/10 bg-[var(--bg)] px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
                     />
                   </div>
 
@@ -227,7 +227,7 @@ export default function ContactPage() {
                       required
                       dir="ltr"
                       placeholder="01xxxxxxxxx"
-                      className="w-full rounded-xl border border-black/10 bg-[#faf8f4] px-4 py-3 text-sm outline-none focus:border-[#a48343]"
+                      className="w-full rounded-xl border border-black/10 bg-[var(--bg)] px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
                     />
                   </div>
 
@@ -241,14 +241,14 @@ export default function ContactPage() {
                       required
                       rows={5}
                       placeholder="اكتبي استفسارك هنا..."
-                      className="w-full resize-none rounded-xl border border-black/10 bg-[#faf8f4] px-4 py-3 text-sm outline-none focus:border-[#a48343]"
+                      className="w-full resize-none rounded-xl border border-black/10 bg-[var(--bg)] px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={sending}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#171512] py-4 text-sm text-white transition hover:bg-[#a48343] disabled:opacity-60"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--ink)] py-4 text-sm text-white transition hover:bg-[var(--brand)] disabled:opacity-60"
                   >
                     {sending ? "جارِ الإرسال..." : "إرسال الرسالة"}
                     <Send size={16} />

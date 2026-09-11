@@ -29,7 +29,7 @@ export default function AdminLoginPage() {
   return (
     <main
       dir="rtl"
-      className="flex min-h-screen items-center justify-center bg-[#171512] px-5"
+      className="flex min-h-screen items-center justify-center bg-[var(--ink)] px-5"
     >
       <form
         onSubmit={handleSubmit}

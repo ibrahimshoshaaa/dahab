@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import {
   getAdminToken,
   adminLogout,
@@ -11,6 +10,7 @@ import {
   uploadImage,
   type SiteSettings,
 } from "../../lib/api"
+import AdminHeader from "../components/AdminHeader"
 
 const FIELD_LABELS: Record<string, string> = {
   announcement_bar:            "شريط الإعلان (أعلى الصفحة)",
@@ -88,13 +88,13 @@ function ImageField({
           value={value}
           onChange={(e) => onChange(fieldKey, e.target.value)}
           placeholder="رابط الصورة أو ارفع من جهازك ←"
-          className="min-w-0 flex-1 rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-[#a48343]"
+          className="min-w-0 flex-1 rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
         />
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          className="shrink-0 rounded-xl border border-[#a48343] px-4 py-2 text-sm text-[#a48343] transition hover:bg-[#a48343] hover:text-white disabled:opacity-50"
+          className="shrink-0 rounded-xl border border-[var(--brand)] px-4 py-2 text-sm text-[var(--brand)] transition hover:bg-[var(--brand)] hover:text-white disabled:opacity-50"
         >
           {uploading ? "جارِ الرفع..." : "⬆ رفع صورة"}
         </button>
@@ -173,30 +173,16 @@ export default function AdminHomepage() {
     <button
       onClick={handleSave}
       disabled={saving}
-      className={`rounded-xl bg-[#171512] px-6 py-3 text-sm text-white transition hover:bg-[#a48343] disabled:opacity-50 ${className}`}
+      className={`rounded-xl bg-[var(--ink)] px-6 py-3 text-sm text-white transition hover:bg-[var(--brand)] disabled:opacity-50 ${className}`}
     >
       {saving ? "جارِ الحفظ..." : saved ? "✓ تم الحفظ" : "حفظ التغييرات"}
     </button>
   )
 
   return (
-    <main dir="rtl" className="min-h-screen bg-[#faf8f4]">
+    <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
 
-      <header className="border-b border-black/10 bg-white">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-5 py-5">
-          <div className="font-serif text-2xl tracking-widest">
-            DAHAB <span className="text-sm text-gray-400">ADMIN</span>
-          </div>
-          <nav className="flex items-center gap-6 text-sm">
-            <Link href="/admin" className="text-gray-500">الطلبات</Link>
-            <Link href="/admin/products" className="text-gray-500">المنتجات</Link>
-            <Link href="/admin/homepage" className="font-medium">الصفحة الرئيسية</Link>
-            <Link href="/admin/pages" className="text-gray-500">الصفحات الثابتة</Link>
-            <Link href="/admin/messages" className="text-gray-500">الرسائل</Link>
-            <button onClick={handleLogout} className="text-gray-500">تسجيل الخروج</button>
-          </nav>
-        </div>
-      </header>
+      <AdminHeader maxWidthClass="max-w-4xl" onLogout={handleLogout} />
 
       <section className="mx-auto max-w-4xl px-5 py-10">
 
@@ -243,14 +229,14 @@ export default function AdminHomepage() {
                       value={value}
                       onChange={(e) => handleChange(key, e.target.value)}
                       rows={3}
-                      className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-[#a48343]"
+                      className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
                     />
                   ) : (
                     <input
                       type="text"
                       value={value}
                       onChange={(e) => handleChange(key, e.target.value)}
-                      className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-[#a48343]"
+                      className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
                     />
                   )}
                 </div>

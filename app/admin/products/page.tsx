@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import { Pencil, Trash2, Plus, X } from "lucide-react"
 import {
   getAdminToken,
@@ -14,6 +13,7 @@ import {
   uploadImage,
   type ApiProduct,
 } from "../../lib/api"
+import AdminHeader from "../components/AdminHeader"
 
 const MAX_IMAGES = 4
 
@@ -81,13 +81,13 @@ function ProductImageSlot({
           value={value}
           onChange={(e) => onChange(index, e.target.value)}
           placeholder="رابط الصورة أو ارفع من جهازك ←"
-          className="min-w-0 flex-1 rounded-xl border border-black/10 px-3 py-2 text-sm outline-none focus:border-[#a07845]"
+          className="min-w-0 flex-1 rounded-xl border border-black/10 px-3 py-2 text-sm outline-none focus:border-[var(--brand-dark)]"
         />
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          className="shrink-0 rounded-xl border border-[#a07845] px-3 py-2 text-xs text-[#a07845] transition hover:bg-[#a07845] hover:text-white disabled:opacity-50"
+          className="shrink-0 rounded-xl border border-[var(--brand-dark)] px-3 py-2 text-xs text-[var(--brand-dark)] transition hover:bg-[var(--brand-dark)] hover:text-white disabled:opacity-50"
         >
           {uploading ? "جارِ الرفع..." : "⬆ رفع"}
         </button>
@@ -322,35 +322,8 @@ export default function AdminProductsPage() {
   }
 
   return (
-    <main dir="rtl" className="min-h-screen bg-[#faf8f4]">
-      <header className="border-b border-black/10 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
-          <div className="font-serif text-2xl tracking-widest">
-            DAHAB <span className="text-sm text-gray-400">ADMIN</span>
-          </div>
-
-          <nav className="flex items-center gap-6 text-sm">
-            <Link href="/admin" className="text-gray-500">
-              الطلبات
-            </Link>
-            <Link href="/admin/products" className="font-medium">
-              المنتجات
-            </Link>
-            <Link href="/admin/homepage" className="text-gray-500">
-              الصفحة الرئيسية
-            </Link>
-            <Link href="/admin/pages" className="text-gray-500">
-              الصفحات الثابتة
-            </Link>
-            <Link href="/admin/messages" className="text-gray-500">
-              الرسائل
-            </Link>
-            <button onClick={handleLogout} className="text-gray-500">
-              تسجيل الخروج
-            </button>
-          </nav>
-        </div>
-      </header>
+    <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
+      <AdminHeader onLogout={handleLogout} />
 
       <section className="mx-auto max-w-7xl px-5 py-10">
         <div className="mb-6 flex items-center justify-between">

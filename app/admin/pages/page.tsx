@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import {
   getAdminToken,
   adminLogout,
@@ -10,6 +9,7 @@ import {
   updateSettings,
   type SiteSettings,
 } from "../../lib/api"
+import AdminHeader from "../components/AdminHeader"
 
 const FIELD_LABELS: Record<string, string> = {
   contact_phone: "رقم التليفون",
@@ -112,29 +112,15 @@ export default function AdminPagesEditor() {
     <button
       onClick={handleSave}
       disabled={saving}
-      className={`rounded-xl bg-[#171512] px-6 py-3 text-sm text-white transition hover:bg-[#a48343] disabled:opacity-50 ${className}`}
+      className={`rounded-xl bg-[var(--ink)] px-6 py-3 text-sm text-white transition hover:bg-[var(--brand)] disabled:opacity-50 ${className}`}
     >
       {saving ? "جارِ الحفظ..." : saved ? "✓ تم الحفظ" : "حفظ التغييرات"}
     </button>
   )
 
   return (
-    <main dir="rtl" className="min-h-screen bg-[#faf8f4]">
-      <header className="border-b border-black/10 bg-white">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-5 py-5">
-          <div className="font-serif text-2xl tracking-widest">
-            DAHAB <span className="text-sm text-gray-400">ADMIN</span>
-          </div>
-          <nav className="flex items-center gap-6 text-sm">
-            <Link href="/admin" className="text-gray-500">الطلبات</Link>
-            <Link href="/admin/products" className="text-gray-500">المنتجات</Link>
-            <Link href="/admin/homepage" className="text-gray-500">الصفحة الرئيسية</Link>
-            <Link href="/admin/pages" className="font-medium">الصفحات الثابتة</Link>
-            <Link href="/admin/messages" className="text-gray-500">الرسائل</Link>
-            <button onClick={handleLogout} className="text-gray-500">تسجيل الخروج</button>
-          </nav>
-        </div>
-      </header>
+    <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
+      <AdminHeader maxWidthClass="max-w-4xl" onLogout={handleLogout} />
 
       <section className="mx-auto max-w-4xl px-5 py-10">
         <div className="mb-8 flex items-center justify-between">
@@ -161,7 +147,7 @@ export default function AdminPagesEditor() {
           <div className="space-y-10">
             {GROUPS.map((group) => (
               <div key={group.title}>
-                <h2 className="mb-4 text-sm font-semibold text-[#a48343]">
+                <h2 className="mb-4 text-sm font-semibold text-[var(--brand)]">
                   {group.title}
                 </h2>
 
@@ -182,14 +168,14 @@ export default function AdminPagesEditor() {
                             value={value}
                             onChange={(e) => handleChange(key, e.target.value)}
                             rows={4}
-                            className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-[#a48343]"
+                            className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
                           />
                         ) : (
                           <input
                             type="text"
                             value={value}
                             onChange={(e) => handleChange(key, e.target.value)}
-                            className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-[#a48343]"
+                            className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
                           />
                         )}
                       </div>

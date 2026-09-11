@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import { Trash2, Phone, Clock } from "lucide-react"
 import {
   getAdminToken,
@@ -12,6 +11,7 @@ import {
   deleteContactMessage,
   type ContactMessage,
 } from "../../lib/api"
+import AdminHeader from "../components/AdminHeader"
 
 export default function AdminMessages() {
   const router = useRouter()
@@ -58,29 +58,12 @@ export default function AdminMessages() {
   const unreadCount = messages.filter((m) => !m.is_read).length
 
   return (
-    <main dir="rtl" className="min-h-screen bg-[#faf8f4]">
-      <header className="border-b border-black/10 bg-white">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-5 py-5">
-          <div className="font-serif text-2xl tracking-widest">
-            DAHAB <span className="text-sm text-gray-400">ADMIN</span>
-          </div>
-          <nav className="flex items-center gap-6 text-sm">
-            <Link href="/admin" className="text-gray-500">الطلبات</Link>
-            <Link href="/admin/products" className="text-gray-500">المنتجات</Link>
-            <Link href="/admin/homepage" className="text-gray-500">الصفحة الرئيسية</Link>
-            <Link href="/admin/pages" className="text-gray-500">الصفحات الثابتة</Link>
-            <Link href="/admin/messages" className="font-medium">
-              الرسائل
-              {unreadCount > 0 && (
-                <span className="mr-1.5 rounded-full bg-[#a48343] px-1.5 py-0.5 text-[10px] text-white">
-                  {unreadCount}
-                </span>
-              )}
-            </Link>
-            <button onClick={handleLogout} className="text-gray-500">تسجيل الخروج</button>
-          </nav>
-        </div>
-      </header>
+    <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
+      <AdminHeader
+        maxWidthClass="max-w-4xl"
+        unreadCount={unreadCount}
+        onLogout={handleLogout}
+      />
 
       <section className="mx-auto max-w-4xl px-5 py-10">
         <div className="mb-8">
@@ -103,7 +86,7 @@ export default function AdminMessages() {
                 key={msg.id}
                 onClick={() => handleOpen(msg)}
                 className={`cursor-pointer rounded-2xl bg-white p-6 shadow-sm transition ${
-                  !msg.is_read ? "border-r-4 border-[#a48343]" : ""
+                  !msg.is_read ? "border-r-4 border-[var(--brand)]" : ""
                 }`}
               >
                 <div className="mb-3 flex items-start justify-between gap-4">
@@ -111,7 +94,7 @@ export default function AdminMessages() {
                     <div className="flex items-center gap-2">
                       <h3 className="font-medium">{msg.name}</h3>
                       {!msg.is_read && (
-                        <span className="rounded-full bg-[#faf3e3] px-2 py-0.5 text-[10px] text-[#a48343]">
+                        <span className="rounded-full bg-[var(--brand-tint)] px-2 py-0.5 text-[10px] text-[var(--brand)]">
                           جديدة
                         </span>
                       )}

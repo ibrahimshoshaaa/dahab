@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import {
   getAdminToken,
   adminLogout,
   fetchAdminOrders,
   updateOrderStatus,
 } from "../../lib/api"
+import AdminHeader from "../components/AdminHeader"
 
 type Order = {
   id: number
@@ -90,35 +90,8 @@ export default function AdminDashboard() {
   }
 
   return (
-    <main dir="rtl" className="min-h-screen bg-[#faf8f4]">
-      <header className="border-b border-black/10 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
-          <div className="font-serif text-2xl tracking-widest">
-            DAHAB <span className="text-sm text-gray-400">ADMIN</span>
-          </div>
-
-          <nav className="flex items-center gap-6 text-sm">
-            <Link href="/admin" className="font-medium">
-              الطلبات
-            </Link>
-            <Link href="/admin/products" className="text-gray-500">
-              المنتجات
-            </Link>
-            <Link href="/admin/homepage" className="text-gray-500">
-              الصفحة الرئيسية
-            </Link>
-            <Link href="/admin/pages" className="text-gray-500">
-              الصفحات الثابتة
-            </Link>
-            <Link href="/admin/messages" className="text-gray-500">
-              الرسائل
-            </Link>
-            <button onClick={handleLogout} className="text-gray-500">
-              تسجيل الخروج
-            </button>
-          </nav>
-        </div>
-      </header>
+    <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
+      <AdminHeader onLogout={handleLogout} />
 
       <section className="mx-auto max-w-7xl px-5 py-10">
         <div className="mb-8 grid gap-4 sm:grid-cols-3">

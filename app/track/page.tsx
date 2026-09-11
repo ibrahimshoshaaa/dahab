@@ -57,7 +57,7 @@ function TrackContent() {
   }, [initialCode])
 
   return (
-    <main dir="rtl" className="min-h-screen bg-[#faf8f4]">
+    <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
       <header className="border-b border-black/10 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
           <Link href="/" className="font-serif text-3xl tracking-widest">
@@ -125,7 +125,7 @@ function TrackContent() {
                 طلب رقم #DAH-{result.order.id} — {result.order.customer_name}
               </p>
 
-              <span className="rounded-full bg-[#faf8f4] px-4 py-1.5 text-sm font-medium">
+              <span className="rounded-full bg-[var(--bg)] px-4 py-1.5 text-sm font-medium">
                 {result.order.status}
               </span>
             </div>
@@ -143,12 +143,12 @@ function TrackContent() {
                     {(item.selected_color || item.selected_size) && (
                       <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-gray-400">
                         {item.selected_color && (
-                          <span className="rounded-full bg-[#faf8f4] px-2.5 py-1">
+                          <span className="rounded-full bg-[var(--bg)] px-2.5 py-1">
                             اللون: {item.selected_color}
                           </span>
                         )}
                         {item.selected_size && (
-                          <span className="rounded-full bg-[#faf8f4] px-2.5 py-1">
+                          <span className="rounded-full bg-[var(--bg)] px-2.5 py-1">
                             المقاس: {item.selected_size}
                           </span>
                         )}

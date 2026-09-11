@@ -47,8 +47,8 @@ export default function ShippingPage() {
 
   if (!isLoaded) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#faf8f4]">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#a48343] border-t-transparent" />
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--brand)] border-t-transparent" />
       </div>
     )
   }
@@ -57,7 +57,7 @@ export default function ShippingPage() {
   const governoratesRegular = toList(s(settings, "shipping_regular_governorates"))
 
   return (
-    <main dir="rtl" className="min-h-screen bg-[#faf8f4] text-[#171512]">
+    <main dir="rtl" className="min-h-screen bg-[var(--bg)] text-[var(--ink)]">
       <header className="border-b border-black/10 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
           <Link href="/" className="font-serif text-3xl tracking-widest">
@@ -76,7 +76,7 @@ export default function ShippingPage() {
 
       <section className="mx-auto max-w-5xl px-5 py-16">
         <div className="mb-14 text-center">
-          <p className="mb-3 text-[11px] tracking-[0.3em] text-[#a48343]">
+          <p className="mb-3 text-[11px] tracking-[0.3em] text-[var(--brand)]">
             DELIVERY INFO
           </p>
           <h1 className="font-serif text-4xl md:text-5xl">
@@ -91,7 +91,7 @@ export default function ShippingPage() {
         {/* بطاقات سريعة */}
         <div className="mb-16 grid gap-5 sm:grid-cols-3">
           <div className="rounded-2xl bg-white p-7 text-center shadow-sm">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#faf3e3] text-[#a48343]">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--brand-tint)] text-[var(--brand)]">
               <Truck size={22} />
             </div>
             <h3 className="mb-1 font-medium">شحن لكل المحافظات</h3>
@@ -99,7 +99,7 @@ export default function ShippingPage() {
           </div>
 
           <div className="rounded-2xl bg-white p-7 text-center shadow-sm">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#faf3e3] text-[#a48343]">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--brand-tint)] text-[var(--brand)]">
               <Wallet size={22} />
             </div>
             <h3 className="mb-1 font-medium">الدفع عند الاستلام</h3>
@@ -107,7 +107,7 @@ export default function ShippingPage() {
           </div>
 
           <div className="rounded-2xl bg-white p-7 text-center shadow-sm">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#faf3e3] text-[#a48343]">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--brand-tint)] text-[var(--brand)]">
               <Clock size={22} />
             </div>
             <h3 className="mb-1 font-medium">توصيل سريع</h3>
@@ -121,7 +121,7 @@ export default function ShippingPage() {
         <div className="mb-16 grid gap-6 md:grid-cols-2">
           <div className="rounded-2xl bg-white p-8 shadow-sm">
             <div className="mb-4 flex items-center gap-3">
-              <MapPin size={20} className="text-[#a48343]" />
+              <MapPin size={20} className="text-[var(--brand)]" />
               <h3 className="text-lg font-medium">
                 القاهرة الكبرى والإسكندرية
               </h3>
@@ -133,7 +133,7 @@ export default function ShippingPage() {
               {governoratesFast.map((gov) => (
                 <span
                   key={gov}
-                  className="rounded-full bg-[#faf3e3] px-4 py-1.5 text-xs text-[#a48343]"
+                  className="rounded-full bg-[var(--brand-tint)] px-4 py-1.5 text-xs text-[var(--brand)]"
                 >
                   {gov}
                 </span>
@@ -143,7 +143,7 @@ export default function ShippingPage() {
 
           <div className="rounded-2xl bg-white p-8 shadow-sm">
             <div className="mb-4 flex items-center gap-3">
-              <MapPin size={20} className="text-[#a48343]" />
+              <MapPin size={20} className="text-[var(--brand)]" />
               <h3 className="text-lg font-medium">باقي المحافظات</h3>
             </div>
             <p className="mb-4 text-sm leading-7 text-gray-500">
@@ -153,7 +153,7 @@ export default function ShippingPage() {
               {governoratesRegular.map((gov) => (
                 <span
                   key={gov}
-                  className="rounded-full bg-[#f1ede5] px-4 py-1.5 text-xs text-gray-600"
+                  className="rounded-full bg-[var(--surface)] px-4 py-1.5 text-xs text-gray-600"
                 >
                   {gov}
                 </span>
@@ -163,7 +163,7 @@ export default function ShippingPage() {
         </div>
 
         {/* خطوات الطلب */}
-        <div className="rounded-2xl bg-[#171512] p-10 text-white">
+        <div className="rounded-2xl bg-[var(--ink)] p-10 text-white">
           <h3 className="mb-8 text-center text-xl font-medium">
             رحلة طلبك خطوة بخطوة
           </h3>
@@ -176,7 +176,7 @@ export default function ShippingPage() {
               ["4", "الاستلام والدفع", "تستلمي طلبك وتدفعي وقت التسليم"],
             ].map(([num, title, desc]) => (
               <div key={num} className="text-center">
-                <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full border border-[#a48343] text-sm text-[#e8d19b]">
+                <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full border border-[var(--brand)] text-sm text-[var(--brand-soft)]">
                   {num}
                 </div>
                 <h4 className="mb-2 text-sm font-medium">{title}</h4>
@@ -187,7 +187,7 @@ export default function ShippingPage() {
         </div>
 
         <div className="mt-10 flex items-start gap-3 rounded-2xl border border-black/5 bg-white p-6 text-sm text-gray-500">
-          <PackageCheck size={20} className="mt-0.5 shrink-0 text-[#a48343]" />
+          <PackageCheck size={20} className="mt-0.5 shrink-0 text-[var(--brand)]" />
           <p className="leading-7">{s(settings, "shipping_note")}</p>
         </div>
       </section>
