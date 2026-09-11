@@ -10,6 +10,7 @@ import {
   ArrowLeft,
 } from "lucide-react"
 import { useCart } from "../context/CartContext"
+import SiteLogo from "../components/SiteLogo"
 
 export default function CartPage() {
   const {
@@ -28,7 +29,7 @@ export default function CartPage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
 
           <Link href="/" className="flex items-center">
-            <img src="/logo.png" alt="دهب" className="h-10 w-auto object-contain" />
+            <SiteLogo className="h-10 w-auto object-contain" />
           </Link>
 
           <div className="flex items-center gap-5">

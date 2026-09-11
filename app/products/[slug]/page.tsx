@@ -17,6 +17,7 @@ import { type Product } from "../../data/products"
 import { fetchProductBySlug } from "../../lib/api"
 import { useCart } from "../../context/CartContext"
 import { useFavorites } from "../../context/FavoritesContext"
+import SiteLogo from "../../components/SiteLogo"
 
 export default function ProductDetails({
   params,
@@ -138,7 +139,7 @@ export default function ProductDetails({
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
 
           <Link href="/" className="flex items-center">
-            <img src="/logo.png" alt="دهب" className="h-10 w-auto object-contain" />
+            <SiteLogo className="h-10 w-auto object-contain" />
           </Link>
 
           <Link

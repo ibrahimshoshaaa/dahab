@@ -4,6 +4,7 @@ import Link from "next/link"
 import { ArrowRight, ArrowLeft, Heart, Trash2, ShoppingBag } from "lucide-react"
 import { useFavorites } from "../context/FavoritesContext"
 import { useCart } from "../context/CartContext"
+import SiteLogo from "../components/SiteLogo"
 
 export default function FavoritesPage() {
   const { favorites, removeFavorite, mounted } = useFavorites()
@@ -14,7 +15,7 @@ export default function FavoritesPage() {
       <header className="sticky top-0 z-50 border-b border-black/10 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
           <Link href="/" className="flex items-center">
-            <img src="/logo.png" alt="دهب" className="h-10 w-auto object-contain" />
+            <SiteLogo className="h-10 w-auto object-contain" />
           </Link>
 
           <Link

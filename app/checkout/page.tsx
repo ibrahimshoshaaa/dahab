@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { useCart } from "../context/CartContext"
 import { createOrder } from "../lib/api"
+import SiteLogo from "../components/SiteLogo"
 
 const governorates = [
   "القاهرة",
@@ -114,7 +115,7 @@ export default function CheckoutPage() {
         <header className="border-b border-black/10 bg-white">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
             <Link href="/" className="flex items-center">
-            <img src="/logo.png" alt="دهب" className="h-10 w-auto object-contain" />
+            <SiteLogo className="h-10 w-auto object-contain" />
           </Link>
 
             <Link
@@ -258,7 +259,7 @@ export default function CheckoutPage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
 
           <Link href="/" className="flex items-center">
-            <img src="/logo.png" alt="دهب" className="h-10 w-auto object-contain" />
+            <SiteLogo className="h-10 w-auto object-contain" />
           </Link>
 
           <Link

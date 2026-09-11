@@ -10,6 +10,7 @@ import {
   MessageCircle,
 } from "lucide-react"
 import { fetchSettings, type SiteSettings } from "../lib/api"
+import SiteLogo from "../components/SiteLogo"
 
 const DEFAULT_SETTINGS: SiteSettings = {
   returns_period_days: "14",
@@ -59,7 +60,7 @@ export default function ReturnsPage() {
       <header className="border-b border-black/10 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
           <Link href="/" className="flex items-center">
-            <img src="/logo.png" alt="دهب" className="h-10 w-auto object-contain" />
+            <SiteLogo className="h-10 w-auto object-contain" />
           </Link>
 
           <Link

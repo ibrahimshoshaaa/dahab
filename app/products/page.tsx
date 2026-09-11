@@ -7,6 +7,7 @@ import { products as mockProducts, type Product } from "../data/products"
 import { fetchProducts } from "../lib/api"
 import { useCart } from "../context/CartContext"
 import { useFavorites } from "../context/FavoritesContext"
+import SiteLogo from "../components/SiteLogo"
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>(mockProducts)
@@ -60,7 +61,7 @@ export default function ProductsPage() {
       <header className="border-b border-black/10 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
           <Link href="/" className="flex items-center">
-            <img src="/logo.png" alt="دهب" className="h-10 w-auto object-contain" />
+            <SiteLogo className="h-10 w-auto object-contain" />
           </Link>
 
           <nav className="hidden gap-8 md:flex">
@@ -110,7 +111,7 @@ export default function ProductsPage() {
 
           <div className="absolute inset-y-0 right-0 flex w-72 max-w-[85%] flex-col bg-white px-6 py-6 shadow-xl">
             <div className="mb-8 flex items-center justify-between">
-              <img src="/logo.png" alt="دهب" className="h-9 w-auto object-contain" />
+              <SiteLogo className="h-9 w-auto object-contain" />
               <button
                 onClick={() => setMobileMenuOpen(false)}
                 aria-label="إغلاق القائمة"

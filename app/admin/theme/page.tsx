@@ -9,6 +9,7 @@ import {
   updateSettings,
 } from "../../lib/api"
 import AdminHeader from "../components/AdminHeader"
+import ImageField from "../components/ImageField"
 import {
   BODY_FONT_OPTIONS,
   HEADING_FONT_OPTIONS,
@@ -53,6 +54,7 @@ function ColorField({
 export default function AdminThemePage() {
   const router = useRouter()
   const [theme, setTheme] = useState<SiteTheme>(DEFAULT_THEME)
+  const [logoUrl, setLogoUrl] = useState("")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
@@ -67,6 +69,7 @@ export default function AdminThemePage() {
       try {
         const settings = await fetchSettings()
         setTheme(resolveTheme(settings))
+        setLogoUrl(settings.site_logo || "")
       } catch {
         setError("تعذر تحميل إعدادات الشكل العام")
       } finally {
@@ -81,6 +84,11 @@ export default function AdminThemePage() {
     setTheme((current) => ({ ...current, [key]: value }))
   }
 
+  function handleLogoChange(_key: string, value: string) {
+    setSaved(false)
+    setLogoUrl(value)
+  }
+
   async function handleSave() {
     setSaving(true)
     setError("")
@@ -93,6 +101,7 @@ export default function AdminThemePage() {
         theme_bg: theme.bg,
         theme_body_font: theme.bodyFont,
         theme_heading_font: theme.headingFont,
+        site_logo: logoUrl,
       })
       setSaved(true)
     } catch {
@@ -105,6 +114,7 @@ export default function AdminThemePage() {
   function handleReset() {
     setSaved(false)
     setTheme(DEFAULT_THEME)
+    setLogoUrl("")
   }
 
   function handleLogout() {
@@ -134,6 +144,23 @@ export default function AdminThemePage() {
         {!loading && (
           <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
             <div className="space-y-8">
+              {/* الشعار */}
+              <div className="rounded-2xl bg-white p-5 shadow-sm">
+                <h2 className="mb-1 text-sm font-semibold text-gray-700">
+                  الشعار (اللوجو)
+                </h2>
+                <p className="mb-4 text-xs text-gray-400">
+                  ده اللوجو اللي بيظهر في هيدر كل صفحات المتجر وفي الفوتر. لو
+                  سيبتيه فاضي، هيتعرض اللوجو الافتراضي.
+                </p>
+                <ImageField
+                  fieldKey="site_logo"
+                  value={logoUrl}
+                  onChange={handleLogoChange}
+                  previewClassName="h-16 w-auto max-w-full rounded-lg bg-[var(--bg)] object-contain p-2"
+                />
+              </div>
+
               {/* الألوان */}
               <div className="rounded-2xl bg-white p-5 shadow-sm">
                 <h2 className="mb-4 text-sm font-semibold text-gray-700">
@@ -234,6 +261,14 @@ export default function AdminThemePage() {
                   ✦ شحن لجميع المحافظات
                 </div>
                 <div className="p-6 text-center">
+                  <img
+                    src={logoUrl || "/logo.png"}
+                    alt="الشعار"
+                    className="mx-auto mb-4 h-10 w-auto object-contain"
+                    onError={(e) => {
+                      ;(e.target as HTMLImageElement).style.display = "none"
+                    }}
+                  />
                   <p
                     className="text-2xl"
                     style={{ fontFamily: headingFont.family, color: theme.ink }}

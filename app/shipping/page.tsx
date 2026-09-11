@@ -11,6 +11,7 @@ import {
   PackageCheck,
 } from "lucide-react"
 import { fetchSettings, type SiteSettings } from "../lib/api"
+import SiteLogo from "../components/SiteLogo"
 
 const DEFAULT_SETTINGS: SiteSettings = {
   shipping_fast_governorates: "القاهرة, الجيزة, القليوبية, الإسكندرية",
@@ -61,7 +62,7 @@ export default function ShippingPage() {
       <header className="border-b border-black/10 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
           <Link href="/" className="flex items-center">
-            <img src="/logo.png" alt="دهب" className="h-10 w-auto object-contain" />
+            <SiteLogo className="h-10 w-auto object-contain" />
           </Link>
 
           <Link

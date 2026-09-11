@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowRight, PackageSearch } from "lucide-react"
 import { fetchOrderByCode } from "../lib/api"
+import SiteLogo from "../components/SiteLogo"
 
 type OrderResult = {
   order: {
@@ -61,7 +62,7 @@ function TrackContent() {
       <header className="border-b border-black/10 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
           <Link href="/" className="flex items-center">
-            <img src="/logo.png" alt="دهب" className="h-10 w-auto object-contain" />
+            <SiteLogo className="h-10 w-auto object-contain" />
           </Link>
 
           <Link

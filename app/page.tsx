@@ -8,6 +8,7 @@ import { useFavorites } from "./context/FavoritesContext"
 import ProductCardImages from "./components/ProductCardImages"
 
 import { Search, Heart, ShoppingBag, Menu, X, ArrowLeft, Truck, RotateCcw, ShieldCheck } from "lucide-react";
+import SiteLogo from "./components/SiteLogo"
 
 const DEFAULT_SETTINGS: SiteSettings = {
   hero_image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=2000&q=90",
@@ -107,7 +108,7 @@ export default function Home() {
           </div>
 
           <a href="#" className="justify-self-center flex items-center justify-center">
-            <img src="/logo.png" alt="دهب" className="h-11 w-auto object-contain sm:h-12" />
+            <SiteLogo className="h-11 w-auto object-contain sm:h-12" />
           </a>
 
           <div className="flex items-center justify-self-end gap-4">
@@ -146,7 +147,7 @@ export default function Home() {
 
           <div className="absolute inset-y-0 right-0 flex w-72 max-w-[85%] flex-col bg-[var(--bg)] px-6 py-6 shadow-xl">
             <div className="mb-8 flex items-center justify-between">
-              <img src="/logo.png" alt="دهب" className="h-9 w-auto object-contain" />
+              <SiteLogo className="h-9 w-auto object-contain" />
               <button
                 onClick={() => setMobileMenuOpen(false)}
                 aria-label="إغلاق القائمة"
@@ -446,7 +447,7 @@ export default function Home() {
         <div className="mx-auto grid max-w-7xl gap-12 md:grid-cols-4">
 
           <div className="md:col-span-2">
-            <img src="/logo.png" alt="دهب" className="h-10 w-auto object-contain" />
+            <SiteLogo className="h-10 w-auto object-contain" />
             <p className="mt-5 max-w-sm text-sm leading-8 text-white/50">
               {s(settings, "footer_description")}
             </p>
