@@ -50,6 +50,7 @@ async function initDb() {
       price REAL NOT NULL,
       old_price REAL,
       image TEXT NOT NULL,
+      images TEXT NOT NULL DEFAULT '[]',
       badge TEXT,
       colors TEXT NOT NULL DEFAULT '[]',
       sizes TEXT NOT NULL DEFAULT '[]',
@@ -57,6 +58,9 @@ async function initDb() {
       featured INTEGER NOT NULL DEFAULT 0,
       best_seller INTEGER NOT NULL DEFAULT 0,
       active INTEGER NOT NULL DEFAULT 1,
+      size_chart TEXT NOT NULL DEFAULT '{}',
+      material_details TEXT NOT NULL DEFAULT '',
+      care_instructions TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -77,6 +81,21 @@ async function initDb() {
     CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_tracking_code
     ON orders(tracking_code);
   `)
+
+  // migrate: add new columns to a products table created before this update
+  const tableInfo = await db.execute("PRAGMA table_info(products)")
+  const existingColumns = new Set(tableInfo.rows.map((row) => row.name))
+  const migrations = [
+    ["images", "ALTER TABLE products ADD COLUMN images TEXT NOT NULL DEFAULT '[]'"],
+    ["size_chart", "ALTER TABLE products ADD COLUMN size_chart TEXT NOT NULL DEFAULT '{}'"],
+    ["material_details", "ALTER TABLE products ADD COLUMN material_details TEXT NOT NULL DEFAULT ''"],
+    ["care_instructions", "ALTER TABLE products ADD COLUMN care_instructions TEXT NOT NULL DEFAULT ''"],
+  ]
+  for (const [column, sql] of migrations) {
+    if (!existingColumns.has(column)) {
+      await db.execute(sql)
+    }
+  }
 
   // seed products
   const productCount = await db.execute("SELECT COUNT(*) AS count FROM products")

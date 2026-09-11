@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Pencil, Trash2, Plus } from "lucide-react"
+import { Pencil, Trash2, Plus, X } from "lucide-react"
 import {
   getAdminToken,
   adminLogout,
@@ -11,8 +11,11 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  uploadImage,
   type ApiProduct,
 } from "../../lib/api"
+
+const MAX_IMAGES = 4
 
 const emptyForm = {
   id: undefined as number | undefined,
@@ -20,7 +23,7 @@ const emptyForm = {
   category: "عبايات",
   price: "",
   oldPrice: "",
-  image: "",
+  images: ["", "", "", ""] as string[],
   badge: "",
   colors: "",
   sizes: "",
@@ -28,6 +31,89 @@ const emptyForm = {
   featured: false,
   bestSeller: false,
   active: true,
+  // جدول المقاسات: صف أول = أسماء الأعمدة (المقاس، الطول، ...)، باقي الصفوف = القيم
+  sizeChartColumns: ["المقاس", "الطول", "الصدر"] as string[],
+  sizeChartRows: [["", "", ""]] as string[][],
+  materialDetails: "",
+  careInstructions: "",
+}
+
+// ── ProductImageSlot: صورة واحدة برفع من الجهاز أو رابط ────────────────────────
+function ProductImageSlot({
+  index,
+  value,
+  onChange,
+}: {
+  index: number
+  value: string
+  onChange: (index: number, value: string) => void
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState("")
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    setUploadError("")
+    try {
+      const url = await uploadImage(file)
+      onChange(index, url)
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "فشل الرفع")
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
+
+  return (
+    <div className="space-y-2 rounded-xl border border-black/10 p-3">
+      <p className="text-xs text-gray-400">
+        {index === 0 ? "الصورة الرئيسية" : `صورة ${index + 1}`}
+      </p>
+
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(index, e.target.value)}
+          placeholder="رابط الصورة أو ارفع من جهازك ←"
+          className="min-w-0 flex-1 rounded-xl border border-black/10 px-3 py-2 text-sm outline-none focus:border-[#a07845]"
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="shrink-0 rounded-xl border border-[#a07845] px-3 py-2 text-xs text-[#a07845] transition hover:bg-[#a07845] hover:text-white disabled:opacity-50"
+        >
+          {uploading ? "جارِ الرفع..." : "⬆ رفع"}
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+      </div>
+
+      {uploadError && <p className="text-xs text-red-500">{uploadError}</p>}
+
+      {value && (
+        <img
+          src={value}
+          alt={`صورة ${index + 1}`}
+          className="h-28 w-full rounded-lg object-cover"
+          onError={(e) => {
+            ;(e.target as HTMLImageElement).style.display = "none"
+          }}
+        />
+      )}
+    </div>
+  )
 }
 
 export default function AdminProductsPage() {
@@ -68,13 +154,23 @@ export default function AdminProductsPage() {
   }
 
   function openEditForm(product: ApiProduct) {
+    const existingImages = product.images?.length ? product.images : [product.image]
+    const images = Array.from({ length: MAX_IMAGES }, (_, i) => existingImages[i] || "")
+
+    const sizeChartColumns = product.sizeChart?.columns?.length
+      ? product.sizeChart.columns
+      : emptyForm.sizeChartColumns
+    const sizeChartRows = product.sizeChart?.rows?.length
+      ? product.sizeChart.rows
+      : emptyForm.sizeChartRows
+
     setForm({
       id: product.id,
       name: product.name,
       category: product.category,
       price: String(product.price),
       oldPrice: product.oldPrice ? String(product.oldPrice) : "",
-      image: product.image,
+      images,
       badge: product.badge || "",
       colors: product.colors.join(", "),
       sizes: product.sizes.join(", "),
@@ -82,8 +178,69 @@ export default function AdminProductsPage() {
       featured: !!product.featured,
       bestSeller: !!product.bestSeller,
       active: product.active !== false,
+      sizeChartColumns,
+      sizeChartRows,
+      materialDetails: product.materialDetails || "",
+      careInstructions: product.careInstructions || "",
     })
     setShowForm(true)
+  }
+
+  function setImageAt(index: number, value: string) {
+    setForm((current) => {
+      const images = [...current.images]
+      images[index] = value
+      return { ...current, images }
+    })
+  }
+
+  function setColumnAt(index: number, value: string) {
+    setForm((current) => {
+      const cols = [...current.sizeChartColumns]
+      cols[index] = value
+      return { ...current, sizeChartColumns: cols }
+    })
+  }
+
+  function addSizeChartColumn() {
+    setForm((current) => ({
+      ...current,
+      sizeChartColumns: [...current.sizeChartColumns, ""],
+      sizeChartRows: current.sizeChartRows.map((row) => [...row, ""]),
+    }))
+  }
+
+  function removeSizeChartColumn(index: number) {
+    setForm((current) => ({
+      ...current,
+      sizeChartColumns: current.sizeChartColumns.filter((_, i) => i !== index),
+      sizeChartRows: current.sizeChartRows.map((row) => row.filter((_, i) => i !== index)),
+    }))
+  }
+
+  function setCellAt(rowIndex: number, colIndex: number, value: string) {
+    setForm((current) => {
+      const rows = current.sizeChartRows.map((row) => [...row])
+      rows[rowIndex][colIndex] = value
+      return { ...current, sizeChartRows: rows }
+    })
+  }
+
+  function addSizeChartRow() {
+    setForm((current) => ({
+      ...current,
+      sizeChartRows: [
+        ...current.sizeChartRows,
+        current.sizeChartColumns.map(() => ""),
+      ],
+    }))
+  }
+
+  function removeSizeChartRow(rowIndex: number) {
+    setForm((current) => ({
+      ...current,
+      sizeChartRows: current.sizeChartRows.filter((_, i) => i !== rowIndex),
+    }))
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -91,12 +248,31 @@ export default function AdminProductsPage() {
     setSaving(true)
     setError("")
 
+    const images = form.images.map((img) => img.trim()).filter(Boolean)
+
+    if (images.length === 0) {
+      setError("من فضلك أضيفي صورة واحدة على الأقل")
+      setSaving(false)
+      return
+    }
+
+    // نحفظ جدول المقاسات فقط لو فيه أعمدة وصفوف مكتملة
+    const sizeChartColumns = form.sizeChartColumns.map((c) => c.trim()).filter(Boolean)
+    const sizeChartRows = form.sizeChartRows
+      .map((row) => row.map((cell) => cell.trim()))
+      .filter((row) => row.some(Boolean))
+    const sizeChart =
+      sizeChartColumns.length > 0 && sizeChartRows.length > 0
+        ? { columns: sizeChartColumns, rows: sizeChartRows }
+        : undefined
+
     const payload = {
       name: form.name,
       category: form.category as "عبايات" | "إكسسوارات",
       price: Number(form.price),
       oldPrice: form.oldPrice ? Number(form.oldPrice) : undefined,
-      image: form.image,
+      image: images[0],
+      images,
       badge: form.badge || undefined,
       colors: form.colors
         .split(",")
@@ -110,6 +286,9 @@ export default function AdminProductsPage() {
       featured: form.featured,
       bestSeller: form.bestSeller,
       active: form.active,
+      sizeChart,
+      materialDetails: form.materialDetails || undefined,
+      careInstructions: form.careInstructions || undefined,
     }
 
     try {
@@ -297,13 +476,21 @@ export default function AdminProductsPage() {
                 />
               </div>
 
-              <input
-                required
-                placeholder="رابط الصورة"
-                value={form.image}
-                onChange={(e) => setForm({ ...form, image: e.target.value })}
-                className="w-full rounded-xl border border-black/10 px-4 py-2.5 text-sm outline-none"
-              />
+              <div>
+                <p className="mb-2 text-sm font-medium">
+                  صور المنتج (حتى {MAX_IMAGES} صور — الأولى هي الرئيسية)
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {form.images.map((img, index) => (
+                    <ProductImageSlot
+                      key={index}
+                      index={index}
+                      value={img}
+                      onChange={setImageAt}
+                    />
+                  ))}
+                </div>
+              </div>
 
               <input
                 placeholder="badge (مثال: جديد)"
@@ -331,6 +518,109 @@ export default function AdminProductsPage() {
                 rows={3}
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
+                className="w-full resize-none rounded-xl border border-black/10 px-4 py-2.5 text-sm outline-none"
+              />
+
+              {/* جدول المقاسات */}
+              <div className="rounded-xl border border-black/10 p-3">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-sm font-medium">جدول المقاسات (اختياري)</p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={addSizeChartColumn}
+                      className="rounded-lg border border-black/10 px-2 py-1 text-xs"
+                    >
+                      + عمود
+                    </button>
+                    <button
+                      type="button"
+                      onClick={addSizeChartRow}
+                      className="rounded-lg border border-black/10 px-2 py-1 text-xs"
+                    >
+                      + صف
+                    </button>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-max border-collapse text-xs">
+                    <thead>
+                      <tr>
+                        {form.sizeChartColumns.map((col, colIndex) => (
+                          <th key={colIndex} className="p-1">
+                            <div className="flex items-center gap-1">
+                              <input
+                                value={col}
+                                onChange={(e) => setColumnAt(colIndex, e.target.value)}
+                                placeholder="اسم العمود"
+                                className="w-24 rounded-lg border border-black/10 px-2 py-1.5 text-xs font-medium outline-none"
+                              />
+                              {form.sizeChartColumns.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeSizeChartColumn(colIndex)}
+                                  className="text-gray-400 hover:text-red-500"
+                                  aria-label="حذف العمود"
+                                >
+                                  <X size={13} />
+                                </button>
+                              )}
+                            </div>
+                          </th>
+                        ))}
+                        <th className="w-6" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {form.sizeChartRows.map((row, rowIndex) => (
+                        <tr key={rowIndex}>
+                          {row.map((cell, colIndex) => (
+                            <td key={colIndex} className="p-1">
+                              <input
+                                value={cell}
+                                onChange={(e) =>
+                                  setCellAt(rowIndex, colIndex, e.target.value)
+                                }
+                                className="w-24 rounded-lg border border-black/10 px-2 py-1.5 text-xs outline-none"
+                              />
+                            </td>
+                          ))}
+                          <td className="p-1">
+                            {form.sizeChartRows.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removeSizeChartRow(rowIndex)}
+                                className="text-gray-400 hover:text-red-500"
+                                aria-label="حذف الصف"
+                              >
+                                <X size={13} />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="mt-2 text-[11px] text-gray-400">
+                  اسيبي الصفوف فاضية لو مش عايزة تظهري جدول المقاسات في صفحة المنتج.
+                </p>
+              </div>
+
+              <textarea
+                placeholder="تفاصيل الخامة (مثال: قماش كريب فاخر، لا يشف، مناسب لكل الفصول)"
+                rows={2}
+                value={form.materialDetails}
+                onChange={(e) => setForm({ ...form, materialDetails: e.target.value })}
+                className="w-full resize-none rounded-xl border border-black/10 px-4 py-2.5 text-sm outline-none"
+              />
+
+              <textarea
+                placeholder={"تعليمات العناية (سطر لكل تعليمة، مثال:\nغسيل يدوي بماء بارد\nلا تستخدمي مبيض\nكوي على حرارة منخفضة"}
+                rows={3}
+                value={form.careInstructions}
+                onChange={(e) => setForm({ ...form, careInstructions: e.target.value })}
                 className="w-full resize-none rounded-xl border border-black/10 px-4 py-2.5 text-sm outline-none"
               />
 

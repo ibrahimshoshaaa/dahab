@@ -43,12 +43,25 @@ function requireAdmin(req, res, next) {
   next()
 }
 
+function safeJsonParse(value, fallback) {
+  try {
+    const parsed = JSON.parse(value)
+    return parsed ?? fallback
+  } catch {
+    return fallback
+  }
+}
+
 function parseProduct(row) {
   return {
     ...row,
     oldPrice: row.old_price,
-    colors: JSON.parse(row.colors || "[]"),
-    sizes: JSON.parse(row.sizes || "[]"),
+    colors: safeJsonParse(row.colors, []),
+    sizes: safeJsonParse(row.sizes, []),
+    images: safeJsonParse(row.images, []),
+    sizeChart: safeJsonParse(row.size_chart, null),
+    materialDetails: row.material_details || "",
+    careInstructions: row.care_instructions || "",
     featured: !!row.featured,
     bestSeller: !!row.best_seller,
     active: !!row.active,
@@ -122,19 +135,26 @@ app.get("/api/admin/products", requireAdmin, async (req, res) => {
 
 app.post("/api/admin/products", requireAdmin, async (req, res) => {
   try {
-    const { name, category, price, oldPrice, image, badge, colors, sizes, description, featured, bestSeller, active } = req.body || {}
-    if (!name || !category || price === undefined || !image) {
+    const {
+      name, category, price, oldPrice, image, images, badge, colors, sizes, description,
+      featured, bestSeller, active, sizeChart, materialDetails, careInstructions,
+    } = req.body || {}
+    const imageList = Array.isArray(images) ? images.filter(Boolean) : []
+    const mainImage = image || imageList[0]
+    if (!name || !category || price === undefined || !mainImage) {
       return res.status(400).json({ success: false, message: "بيانات المنتج غير مكتملة" })
     }
     let slug = slugify(name)
     const exists = await db.execute({ sql: "SELECT id FROM products WHERE slug = ?", args: [slug] })
     if (exists.rows[0]) slug = `${slug}-${Date.now()}`
     const result = await db.execute({
-      sql: `INSERT INTO products (slug,name,category,price,old_price,image,badge,colors,sizes,description,featured,best_seller,active)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      args: [slug, name, category, Number(price), oldPrice ? Number(oldPrice) : null, image, badge || null,
+      sql: `INSERT INTO products (slug,name,category,price,old_price,image,images,badge,colors,sizes,description,featured,best_seller,active,size_chart,material_details,care_instructions)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      args: [slug, name, category, Number(price), oldPrice ? Number(oldPrice) : null, mainImage,
+             JSON.stringify(imageList.length ? imageList : [mainImage]), badge || null,
              JSON.stringify(colors || []), JSON.stringify(sizes || []), description || "",
-             featured ? 1 : 0, bestSeller ? 1 : 0, active === false ? 0 : 1]
+             featured ? 1 : 0, bestSeller ? 1 : 0, active === false ? 0 : 1,
+             JSON.stringify(sizeChart || {}), materialDetails || "", careInstructions || ""]
     })
     res.status(201).json({ success: true, id: result.lastInsertRowid, slug })
   } catch (error) {
@@ -149,19 +169,30 @@ app.put("/api/admin/products/:id", requireAdmin, async (req, res) => {
     const ex = await db.execute({ sql: "SELECT * FROM products WHERE id = ?", args: [id] })
     if (!ex.rows[0]) return res.status(404).json({ success: false, message: "المنتج غير موجود" })
     const e = ex.rows[0]
-    const { name, category, price, oldPrice, image, badge, colors, sizes, description, featured, bestSeller, active } = req.body || {}
+    const {
+      name, category, price, oldPrice, image, images, badge, colors, sizes, description,
+      featured, bestSeller, active, sizeChart, materialDetails, careInstructions,
+    } = req.body || {}
+    const imageList = Array.isArray(images) ? images.filter(Boolean) : undefined
+    const mainImage = image ?? imageList?.[0]
     await db.execute({
-      sql: `UPDATE products SET name=?,category=?,price=?,old_price=?,image=?,badge=?,colors=?,sizes=?,description=?,featured=?,best_seller=?,active=? WHERE id=?`,
+      sql: `UPDATE products SET name=?,category=?,price=?,old_price=?,image=?,images=?,badge=?,colors=?,sizes=?,description=?,featured=?,best_seller=?,active=?,size_chart=?,material_details=?,care_instructions=? WHERE id=?`,
       args: [name ?? e.name, category ?? e.category,
              price !== undefined ? Number(price) : e.price,
              oldPrice !== undefined ? (oldPrice ? Number(oldPrice) : null) : e.old_price,
-             image ?? e.image, badge !== undefined ? badge : e.badge,
+             mainImage ?? e.image,
+             imageList !== undefined ? JSON.stringify(imageList.length ? imageList : [mainImage ?? e.image]) : e.images,
+             badge !== undefined ? badge : e.badge,
              colors !== undefined ? JSON.stringify(colors) : e.colors,
              sizes !== undefined ? JSON.stringify(sizes) : e.sizes,
              description !== undefined ? description : e.description,
              featured !== undefined ? (featured ? 1 : 0) : e.featured,
              bestSeller !== undefined ? (bestSeller ? 1 : 0) : e.best_seller,
-             active !== undefined ? (active ? 1 : 0) : e.active, id]
+             active !== undefined ? (active ? 1 : 0) : e.active,
+             sizeChart !== undefined ? JSON.stringify(sizeChart) : e.size_chart,
+             materialDetails !== undefined ? materialDetails : e.material_details,
+             careInstructions !== undefined ? careInstructions : e.care_instructions,
+             id]
     })
     res.json({ success: true })
   } catch (error) {

@@ -10,6 +10,8 @@ import {
   ShieldCheck,
   Plus,
   Minus,
+  Check,
+  Sparkles,
 } from "lucide-react"
 import { type Product } from "../../data/products"
 import { fetchProductBySlug } from "../../lib/api"
@@ -32,6 +34,7 @@ export default function ProductDetails({
   const [selectedSize, setSelectedSize] = useState("")
   const [quantity, setQuantity] = useState(1)
   const [added, setAdded] = useState(false)
+  const [activeImage, setActiveImage] = useState(0)
 
   useEffect(() => {
     let active = true
@@ -41,6 +44,8 @@ export default function ProductDetails({
       setProduct(result)
       setSelectedColor(result?.colors[0] || "")
       setSelectedSize(result?.sizes[0] || "")
+      setActiveImage(0)
+      setAdded(false)
       setLoading(false)
     })
 
@@ -48,6 +53,8 @@ export default function ProductDetails({
       active = false
     }
   }, [slug])
+
+  const galleryImages = product?.images?.length ? product.images : product ? [product.image] : []
 
   if (!product && !loading) {
     return (
@@ -91,10 +98,16 @@ export default function ProductDetails({
     )
 
     setAdded(true)
+  }
 
-    setTimeout(() => {
-      setAdded(false)
-    }, 2000)
+  function handleColorSelect(color: string) {
+    setSelectedColor(color)
+    setAdded(false)
+  }
+
+  function handleSizeSelect(size: string) {
+    setSelectedSize(size)
+    setAdded(false)
   }
 
   return (
@@ -134,12 +147,36 @@ export default function ProductDetails({
 
           {/* صورة المنتج */}
 
-          <div className="overflow-hidden rounded-3xl bg-white">
-            <img
-              src={product.image}
-              alt={product.name}
-              className="h-full max-h-[700px] w-full object-cover"
-            />
+          <div>
+            <div className="overflow-hidden rounded-3xl bg-white">
+              <img
+                src={galleryImages[activeImage] || product.image}
+                alt={product.name}
+                className="h-full max-h-[700px] w-full object-cover"
+              />
+            </div>
+
+            {galleryImages.length > 1 && (
+              <div className="mt-3 flex gap-3">
+                {galleryImages.map((img, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setActiveImage(index)}
+                    className={`h-20 w-20 overflow-hidden rounded-xl border-2 transition ${
+                      activeImage === index
+                        ? "border-[#a07845]"
+                        : "border-transparent"
+                    }`}
+                  >
+                    <img
+                      src={img}
+                      alt={`${product.name} ${index + 1}`}
+                      className="h-full w-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* بيانات المنتج */}
@@ -189,7 +226,7 @@ export default function ProductDetails({
                   {product.colors.map((color) => (
                     <button
                       key={color}
-                      onClick={() => setSelectedColor(color)}
+                      onClick={() => handleColorSelect(color)}
                       className={`rounded-full border px-5 py-2 transition ${
                         selectedColor === color
                           ? "border-black bg-black text-white"
@@ -222,7 +259,7 @@ export default function ProductDetails({
                   {product.sizes.map((size) => (
                     <button
                       key={size}
-                      onClick={() => setSelectedSize(size)}
+                      onClick={() => handleSizeSelect(size)}
                       className={`h-11 min-w-12 rounded-lg border px-4 transition ${
                         selectedSize === size
                           ? "border-black bg-black text-white"
@@ -278,26 +315,37 @@ export default function ProductDetails({
 
             <div className="mt-8 flex gap-3">
 
-              <button
-                onClick={handleAddToCart}
-                className={`flex flex-1 items-center justify-center gap-3 rounded-full py-4 text-white transition ${
-                  added
-                    ? "bg-green-700"
-                    : "bg-black hover:bg-[#a07845]"
-                }`}
-              >
+              {added ? (
+                <>
+                  <button
+                    onClick={handleAddToCart}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-full border-2 border-green-700 py-4 text-green-700 transition hover:bg-green-50"
+                  >
+                    <Check size={20} />
+                    تمت الإضافة ✓
+                  </button>
 
-                <ShoppingBag size={20} />
-
-                {added
-                  ? "تمت الإضافة للسلة ✓"
-                  : "إضافة للسلة"}
-
-              </button>
+                  <Link
+                    href="/checkout"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#a07845] py-4 text-white transition hover:bg-black"
+                  >
+                    <Sparkles size={18} />
+                    إتمام الطلب
+                  </Link>
+                </>
+              ) : (
+                <button
+                  onClick={handleAddToCart}
+                  className="flex flex-1 items-center justify-center gap-3 rounded-full bg-black py-4 text-white transition hover:bg-[#a07845]"
+                >
+                  <ShoppingBag size={20} />
+                  إضافة للسلة
+                </button>
+              )}
 
               <button
                 onClick={() => toggleFavorite(product)}
-                className={`flex h-14 w-14 items-center justify-center rounded-full border transition ${
+                className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full border transition ${
                   isFavorite(product.id)
                     ? "border-[#a07845] bg-[#a07845] text-white"
                     : "border-gray-300 bg-white"
@@ -308,6 +356,15 @@ export default function ProductDetails({
               </button>
 
             </div>
+
+            {added && (
+              <p className="mt-3 text-sm text-gray-500">
+                تقدري تكملي التسوق وتزودي حاجات تانية للسلة، أو تدخلي على السلة وتراجعيها قبل إتمام الطلب.{" "}
+                <Link href="/cart" className="text-[#a07845] underline">
+                  عرض السلة
+                </Link>
+              </p>
+            )}
 
             {/* المميزات */}
 
@@ -335,6 +392,76 @@ export default function ProductDetails({
               </div>
 
             </div>
+
+            {/* تفاصيل الخامة */}
+
+            {product.materialDetails && (
+              <div className="mt-8 border-t pt-6">
+                <h3 className="mb-2 font-semibold">تفاصيل الخامة</h3>
+                <p className="leading-7 text-gray-600">{product.materialDetails}</p>
+              </div>
+            )}
+
+            {/* تعليمات العناية */}
+
+            {product.careInstructions && (
+              <div className="mt-8 border-t pt-6">
+                <h3 className="mb-3 font-semibold">تعليمات العناية</h3>
+                <ul className="space-y-2">
+                  {product.careInstructions
+                    .split("\n")
+                    .map((line) => line.trim())
+                    .filter(Boolean)
+                    .map((line, index) => (
+                      <li key={index} className="flex items-start gap-2 text-gray-600">
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#a07845]" />
+                        <span className="leading-6">{line}</span>
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            )}
+
+            {/* جدول المقاسات */}
+
+            {product.sizeChart && product.sizeChart.columns.length > 0 && product.sizeChart.rows.length > 0 && (
+              <div className="mt-8 border-t pt-6">
+                <h3 className="mb-3 font-semibold">جدول المقاسات</h3>
+                <div className="overflow-x-auto rounded-xl border border-black/10">
+                  <table className="w-full min-w-max border-collapse text-sm">
+                    <thead>
+                      <tr className="bg-[#faf8f4]">
+                        {product.sizeChart.columns.map((col, index) => (
+                          <th
+                            key={index}
+                            className="border-b border-black/10 px-4 py-3 text-right font-semibold"
+                          >
+                            {col}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {product.sizeChart.rows.map((row, rowIndex) => (
+                        <tr key={rowIndex} className="odd:bg-white even:bg-[#faf8f4]/50">
+                          {row.map((cell, cellIndex) => (
+                            <td
+                              key={cellIndex}
+                              className="border-b border-black/5 px-4 py-3 text-gray-600 last:border-b-0"
+                            >
+                              {cell}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="mt-2 text-xs text-gray-400">
+                  المقاسات بالسنتيمتر، وممكن تختلف بنسبة بسيطة حسب الخامة.
+                </p>
+              </div>
+            )}
 
           </div>
 

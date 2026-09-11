@@ -120,7 +120,7 @@ export default function Home() {
             <Link href="/favorites" className="relative">
               <Heart size={21} strokeWidth={1.5} />
               {favoritesMounted && favoritesCount > 0 && (
-                <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-[#a48343] text-[9px] text-white">
+                <span className="absolute -right-2 -top-2 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#a48343] px-[3px] text-[9px] leading-none text-white">
                   {favoritesCount}
                 </span>
               )}
@@ -129,7 +129,7 @@ export default function Home() {
             <Link href="/cart" className="relative">
               <ShoppingBag size={22} strokeWidth={1.5} />
               {mounted && cartCount > 0 && (
-                <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-[#171512] text-[9px] text-white">
+                <span className="absolute -right-2 -top-2 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#171512] px-[3px] text-[9px] leading-none text-white">
                   {cartCount}
                 </span>
               )}
