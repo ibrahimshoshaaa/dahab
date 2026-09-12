@@ -52,6 +52,7 @@ export type OrderPayload = {
   address: string
   notes?: string
   total: number
+  coupon_code?: string
   items: {
     product_id: number
     product_name: string
@@ -223,6 +224,14 @@ export async function fetchCustomerOrders(phone: string) {
   const data = await adminFetch(`/api/admin/customers/${encodeURIComponent(phone)}/orders`)
   return data.orders as Record<string, unknown>[]
 }
+
+// ---------- coupons ----------
+export type AdminCoupon = { id:number; code:string; type:"percent"|"fixed"; value:number; min_order:number; max_uses:number; used_count:number; expires_at:string|null; active:number }
+export async function fetchAdminCoupons(){const data=await adminFetch("/api/admin/coupons");return data.coupons as AdminCoupon[]}
+export async function createCoupon(payload:Record<string,unknown>){return adminFetch("/api/admin/coupons",{method:"POST",body:JSON.stringify(payload)})}
+export async function updateCoupon(id:number,payload:Record<string,unknown>){return adminFetch(`/api/admin/coupons/${id}`,{method:"PUT",body:JSON.stringify(payload)})}
+export async function deleteCoupon(id:number){return adminFetch(`/api/admin/coupons/${id}`,{method:"DELETE"})}
+export async function validateCoupon(code:string,subtotal:number){const res=await fetch(`${API_URL}/api/coupons/validate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code,subtotal})});const data=await res.json();if(!res.ok||!data.success)throw new Error(data.message||"الكوبون غير صالح");return data as {coupon:{code:string;type:string;value:number};discount:number;total:number}}
 
 // ---------- settings ----------
 

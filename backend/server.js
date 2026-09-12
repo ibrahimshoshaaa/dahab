@@ -243,6 +243,53 @@ app.delete("/api/admin/products/:id", requireAdmin, async (req, res) => {
   }
 })
 
+// ---------- coupons ----------
+function couponDiscount(coupon, subtotal) {
+  if (!coupon || !coupon.active) return 0
+  if (Number(coupon.min_order || 0) > subtotal) return 0
+  if (coupon.max_uses && Number(coupon.used_count || 0) >= Number(coupon.max_uses)) return 0
+  if (coupon.expires_at && new Date(coupon.expires_at).getTime() <= Date.now()) return 0
+  const raw = coupon.type === "fixed" ? Number(coupon.value) : subtotal * Number(coupon.value) / 100
+  return Math.max(0, Math.min(subtotal, raw))
+}
+
+app.post("/api/coupons/validate", async (req, res) => {
+  try {
+    const code = String(req.body?.code || "").trim().toUpperCase()
+    const subtotal = Number(req.body?.subtotal || 0)
+    if (!code || !Number.isFinite(subtotal) || subtotal < 0) return res.status(400).json({ success:false, message:"بيانات الكوبون غير صحيحة" })
+    const result = await db.execute({ sql:"SELECT * FROM coupons WHERE code = ?", args:[code] })
+    const coupon = result.rows[0]
+    const discount = couponDiscount(coupon, subtotal)
+    if (!coupon || discount <= 0) return res.status(400).json({ success:false, message:"الكوبون غير صالح أو لا ينطبق على هذا الطلب" })
+    res.json({ success:true, coupon:{ code:coupon.code, type:coupon.type, value:coupon.value }, discount, total:Math.max(0, subtotal-discount) })
+  } catch(error){ console.error(error); res.status(500).json({success:false,message:"حدث خطأ أثناء التحقق من الكوبون"}) }
+})
+
+app.get("/api/admin/coupons", requireAdmin, async (req,res)=>{
+  try { const result=await db.execute("SELECT * FROM coupons ORDER BY id DESC"); res.json({success:true,coupons:result.rows}) }
+  catch(error){ console.error(error); res.status(500).json({success:false,message:"تعذر جلب الكوبونات"}) }
+})
+app.post("/api/admin/coupons", requireAdmin, async (req,res)=>{
+  try {
+    const {code,type,value,minOrder,maxUses,expiresAt,active}=req.body||{}
+    const normalized=String(code||"").trim().toUpperCase()
+    if(!normalized || !["percent","fixed"].includes(type) || !Number.isFinite(Number(value)) || Number(value)<0 || (type==="percent"&&Number(value)>100)) return res.status(400).json({success:false,message:"بيانات الكوبون غير صحيحة"})
+    const r=await db.execute({sql:"INSERT INTO coupons(code,type,value,min_order,max_uses,expires_at,active) VALUES(?,?,?,?,?,?,?)",args:[normalized,type,Number(value),Math.max(0,Number(minOrder||0)),Math.max(0,Number(maxUses||0)),expiresAt||null,active===false?0:1]})
+    res.status(201).json({success:true,id:Number(r.lastInsertRowid)})
+  } catch(error){ console.error(error); res.status(400).json({success:false,message:error.message?.includes("UNIQUE")?"كود الكوبون مستخدم بالفعل":"تعذر إنشاء الكوبون"}) }
+})
+app.put("/api/admin/coupons/:id", requireAdmin, async (req,res)=>{
+  try {
+    const id=Number(req.params.id), ex=await db.execute({sql:"SELECT * FROM coupons WHERE id=?",args:[id]}); if(!ex.rows[0]) return res.status(404).json({success:false,message:"الكوبون غير موجود"})
+    const old=ex.rows[0], b=req.body||{}, type=b.type??old.type, value=b.value!==undefined?Number(b.value):Number(old.value)
+    if(!["percent","fixed"].includes(type)||value<0||(type==="percent"&&value>100)) return res.status(400).json({success:false,message:"بيانات الكوبون غير صحيحة"})
+    await db.execute({sql:"UPDATE coupons SET code=?,type=?,value=?,min_order=?,max_uses=?,expires_at=?,active=? WHERE id=?",args:[String(b.code??old.code).trim().toUpperCase(),type,value,Math.max(0,Number(b.minOrder??old.min_order)),Math.max(0,Number(b.maxUses??old.max_uses)),b.expiresAt===undefined?old.expires_at:(b.expiresAt||null),b.active===undefined?old.active:(b.active?1:0),id]})
+    res.json({success:true})
+  } catch(error){ console.error(error); res.status(400).json({success:false,message:"تعذر تعديل الكوبون"}) }
+})
+app.delete("/api/admin/coupons/:id", requireAdmin, async (req,res)=>{ try { const r=await db.execute({sql:"DELETE FROM coupons WHERE id=?",args:[Number(req.params.id)]}); if(!r.rowsAffected)return res.status(404).json({success:false,message:"الكوبون غير موجود"});res.json({success:true}) }catch(error){res.status(500).json({success:false,message:"تعذر حذف الكوبون"})} })
+
 // ---------- orders ----------
 
 app.get("/api/orders", requireAdmin, async (req, res) => {
@@ -264,36 +311,41 @@ app.get("/api/orders", requireAdmin, async (req, res) => {
 
 app.post("/api/orders", async (req, res) => {
   try {
-    const { customer_name, phone, governorate, area, address, notes, items, total } = req.body
-    if (!customer_name || !phone || !governorate || !area || !address || !items || !Array.isArray(items) || items.length === 0 || total === undefined) {
+    const { customer_name, phone, governorate, area, address, notes, items, total, coupon_code } = req.body
+    if (!customer_name || !phone || !governorate || !area || !address || !Array.isArray(items) || items.length === 0 || total === undefined) {
       return res.status(400).json({ success: false, message: "بيانات الطلب غير مكتملة" })
+    }
+    const subtotal = items.reduce((sum, item) => sum + Number(item.price || 0) * Math.max(1, Number(item.quantity || 0)), 0)
+    let discount = 0, coupon = null
+    if (coupon_code) {
+      const cr = await db.execute({sql:"SELECT * FROM coupons WHERE code=?",args:[String(coupon_code).trim().toUpperCase()]})
+      coupon = cr.rows[0]
+      discount = couponDiscount(coupon, subtotal)
+      if (!coupon || discount <= 0) return res.status(400).json({success:false,message:"الكوبون غير صالح أو انتهت صلاحيته"})
+    }
+    const finalTotal = Math.max(0, subtotal - discount)
+    if (Math.abs(Number(total) - finalTotal) > 0.01) return res.status(400).json({success:false,message:"قيمة الطلب غير متطابقة، أعد المحاولة"})
+
+    // Validate and reserve stock before creating the order.
+    for (const item of items) {
+      const qty = Math.max(1, Math.floor(Number(item.quantity || 0)))
+      const pr = await db.execute({sql:"SELECT id,name,stock FROM products WHERE id=?",args:[Number(item.product_id)]})
+      if (!pr.rows[0]) return res.status(400).json({success:false,message:`المنتج غير موجود: ${item.product_name || ""}`})
+      if (Number(pr.rows[0].stock || 0) < qty) return res.status(400).json({success:false,message:`الكمية غير متوفرة من ${pr.rows[0].name}. المتاح: ${Number(pr.rows[0].stock || 0)}`})
     }
 
     let trackingCode = generateTrackingCode()
-    while (true) {
-      const check = await db.execute({ sql: "SELECT 1 FROM orders WHERE tracking_code = ?", args: [trackingCode] })
-      if (!check.rows[0]) break
-      trackingCode = generateTrackingCode()
-    }
-
-    const orderResult = await db.execute({
-      sql: `INSERT INTO orders (customer_name,phone,governorate,area,address,notes,total,tracking_code) VALUES (?,?,?,?,?,?,?,?)`,
-      args: [customer_name, phone, governorate, area, address, notes || "", Number(total), trackingCode]
-    })
-    const orderId = Number(orderResult.lastInsertRowid)
-
+    while (true) { const check = await db.execute({ sql: "SELECT 1 FROM orders WHERE tracking_code = ?", args: [trackingCode] }); if (!check.rows[0]) break; trackingCode = generateTrackingCode() }
+    const orderResult = await db.execute({ sql:`INSERT INTO orders (customer_name,phone,governorate,area,address,notes,total,tracking_code) VALUES (?,?,?,?,?,?,?,?)`, args:[customer_name,phone,governorate,area,address,notes||"",finalTotal,trackingCode] })
+    const orderId=Number(orderResult.lastInsertRowid)
     for (const item of items) {
-      await db.execute({
-        sql: `INSERT INTO order_items (order_id,product_id,product_name,price,quantity,selected_color,selected_size) VALUES (?,?,?,?,?,?,?)`,
-        args: [orderId, Number(item.product_id), item.product_name, Number(item.price), Number(item.quantity), item.selected_color || null, item.selected_size || null]
-      })
+      const qty=Math.max(1,Math.floor(Number(item.quantity||0)))
+      await db.execute({sql:`INSERT INTO order_items (order_id,product_id,product_name,price,quantity,selected_color,selected_size) VALUES (?,?,?,?,?,?,?)`,args:[orderId,Number(item.product_id),item.product_name,Number(item.price),qty,item.selected_color||null,item.selected_size||null]})
+      await db.execute({sql:"UPDATE products SET stock=stock-? WHERE id=? AND stock>=?",args:[qty,Number(item.product_id),qty]})
     }
-
-    res.status(201).json({ success: true, message: "تم إنشاء الطلب بنجاح", order_id: orderId, tracking_code: trackingCode })
-  } catch (error) {
-    console.error(error)
-    res.status(500).json({ success: false, message: "حدث خطأ أثناء إنشاء الطلب" })
-  }
+    if(coupon) await db.execute({sql:"UPDATE coupons SET used_count=used_count+1 WHERE id=?",args:[coupon.id]})
+    res.status(201).json({success:true,message:"تم إنشاء الطلب بنجاح",order_id:orderId,tracking_code:trackingCode,discount})
+  } catch(error){ console.error(error); res.status(500).json({success:false,message:"حدث خطأ أثناء إنشاء الطلب"}) }
 })
 
 app.get("/api/orders/track/:code", async (req, res) => {

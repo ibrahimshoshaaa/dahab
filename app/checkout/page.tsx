@@ -13,7 +13,7 @@ import {
   FileText,
 } from "lucide-react"
 import { useCart } from "../context/CartContext"
-import { createOrder } from "../lib/api"
+import { createOrder, validateCoupon } from "../lib/api"
 import SiteHeader from "../components/SiteHeader"
 
 const governorates = [
@@ -62,6 +62,10 @@ export default function CheckoutPage() {
   const [trackingCode, setTrackingCode] = useState("")
   const [copied, setCopied] = useState(false)
   const [orderTotal, setOrderTotal] = useState(0)
+  const [couponCode, setCouponCode] = useState("")
+  const [discount, setDiscount] = useState(0)
+  const [couponError, setCouponError] = useState("")
+  const [couponLoading, setCouponLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -82,7 +86,8 @@ export default function CheckoutPage() {
         area,
         address,
         notes,
-        total: cartTotal,
+        total: Math.max(0, cartTotal - discount),
+        coupon_code: couponCode || undefined,
         items: cart.map((item) => ({
           product_id: item.id,
           product_name: item.name,
@@ -95,7 +100,7 @@ export default function CheckoutPage() {
 
       setOrderId(orderId)
       setTrackingCode(trackingCode)
-      setOrderTotal(cartTotal)
+      setOrderTotal(Math.max(0, cartTotal - discount))
       setSubmitted(true)
       clearCart()
     } catch (err) {
@@ -548,18 +553,23 @@ export default function CheckoutPage() {
                 </span>
               </div>
 
+              {discount > 0 && <div className="mt-4 flex items-center justify-between text-sm text-emerald-600"><span>الخصم</span><span>- {discount.toLocaleString("ar-EG")} جنيه</span></div>}
+
               <div className="my-6 border-t" />
 
               <div className="flex items-center justify-between">
+                <span className="font-semibold">الإجمالي</span>
+                <span className="text-2xl font-semibold">{Math.max(0, cartTotal - discount).toLocaleString("ar-EG")} جنيه</span>
+              </div>
 
-                <span className="font-semibold">
-                  الإجمالي
-                </span>
-
-                <span className="text-2xl font-semibold">
-                  {cartTotal.toLocaleString("ar-EG")} جنيه
-                </span>
-
+              <div className="mt-6 rounded-2xl border border-black/10 p-4">
+                <p className="text-sm font-semibold">كود الخصم</p>
+                <div className="mt-3 flex gap-2">
+                  <input value={couponCode} onChange={e=>{setCouponCode(e.target.value.toUpperCase());setCouponError("");setDiscount(0)}} placeholder="مثال: DAHAB10" className="min-w-0 flex-1 rounded-xl border border-black/10 px-3 py-3 text-sm uppercase outline-none"/>
+                  <button type="button" disabled={couponLoading||!couponCode.trim()} onClick={async()=>{setCouponLoading(true);setCouponError("");try{const r=await validateCoupon(couponCode,cartTotal);setDiscount(r.discount)}catch(e){setDiscount(0);setCouponError(e instanceof Error?e.message:"الكوبون غير صالح")}finally{setCouponLoading(false)}}} className="rounded-xl bg-black px-4 text-sm text-white disabled:opacity-50">{couponLoading?"...":"تطبيق"}</button>
+                </div>
+                {couponError&&<p className="mt-2 text-xs text-red-600">{couponError}</p>}
+                {discount>0&&<p className="mt-2 text-xs text-emerald-600">تم تطبيق الخصم: {discount.toLocaleString("ar-EG")} جنيه</p>}
               </div>
 
               {/* Payment */}
