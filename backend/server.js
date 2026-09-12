@@ -69,11 +69,10 @@ function parseProduct(row) {
 }
 
 function slugify(name) {
-  return (
-    String(name).trim().toLowerCase()
-      .replace(/[^\u0600-\u06FFa-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "") || `product-${Date.now()}`
-  )
+  const english = String(name).trim().toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+  return english || `product-${Date.now()}`
 }
 
 app.get("/", (req, res) => {
@@ -170,14 +169,14 @@ app.put("/api/admin/products/:id", requireAdmin, async (req, res) => {
     if (!ex.rows[0]) return res.status(404).json({ success: false, message: "المنتج غير موجود" })
     const e = ex.rows[0]
     const {
-      name, category, price, oldPrice, image, images, badge, colors, sizes, description,
+      name, slug, category, price, oldPrice, image, images, badge, colors, sizes, description,
       featured, bestSeller, active, sizeChart, materialDetails, careInstructions,
     } = req.body || {}
     const imageList = Array.isArray(images) ? images.filter(Boolean) : undefined
     const mainImage = image ?? imageList?.[0]
     await db.execute({
-      sql: `UPDATE products SET name=?,category=?,price=?,old_price=?,image=?,images=?,badge=?,colors=?,sizes=?,description=?,featured=?,best_seller=?,active=?,size_chart=?,material_details=?,care_instructions=? WHERE id=?`,
-      args: [name ?? e.name, category ?? e.category,
+      sql: `UPDATE products SET slug=?,name=?,category=?,price=?,old_price=?,image=?,images=?,badge=?,colors=?,sizes=?,description=?,featured=?,best_seller=?,active=?,size_chart=?,material_details=?,care_instructions=? WHERE id=?`,
+      args: [slug ?? e.slug, name ?? e.name, category ?? e.category,
              price !== undefined ? Number(price) : e.price,
              oldPrice !== undefined ? (oldPrice ? Number(oldPrice) : null) : e.old_price,
              mainImage ?? e.image,

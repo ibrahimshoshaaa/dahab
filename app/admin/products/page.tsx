@@ -19,6 +19,7 @@ const MAX_IMAGES = 4
 
 const emptyForm = {
   id: undefined as number | undefined,
+  slug: "",
   name: "",
   category: "عبايات",
   price: "",
@@ -166,6 +167,7 @@ export default function AdminProductsPage() {
 
     setForm({
       id: product.id,
+      slug: product.slug ?? "",
       name: product.name,
       category: product.category,
       price: String(product.price),
@@ -268,6 +270,7 @@ export default function AdminProductsPage() {
 
     const payload = {
       name: form.name,
+      ...(form.id && form.slug ? { slug: form.slug } : {}),
       category: form.category as "عبايات" | "إكسسوارات",
       price: Number(form.price),
       oldPrice: form.oldPrice ? Number(form.oldPrice) : undefined,
@@ -421,6 +424,16 @@ export default function AdminProductsPage() {
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className="w-full rounded-xl border border-black/10 px-4 py-2.5 text-sm outline-none"
               />
+
+              {form.id && (
+                <input
+                  placeholder="slug (إنجليزي فقط)"
+                  value={form.slug}
+                  onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })}
+                  className="w-full rounded-xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-sm outline-none"
+                  dir="ltr"
+                />
+              )}
 
               <select
                 value={form.category}
