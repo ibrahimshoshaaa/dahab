@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { Search, SlidersHorizontal, Heart } from "lucide-react"
+import { Search, SlidersHorizontal, Heart, X, ShoppingBag } from "lucide-react"
 import { products as mockProducts, type Product } from "../data/products"
 import { fetchProducts } from "../lib/api"
 import { useFavorites } from "../context/FavoritesContext"
 import SiteHeader from "../components/SiteHeader"
+import StoreFooter from "../components/StoreFooter"
 
 function ProductsContent() {
   const searchParams = useSearchParams()
@@ -19,6 +20,7 @@ function ProductsContent() {
   const [search, setSearch] = useState("")
   const [category, setCategory] = useState(initialCategory)
   const [sort, setSort] = useState("default")
+  const [showFilters, setShowFilters] = useState(false)
   const { toggleFavorite, isFavorite } = useFavorites()
 
   useEffect(() => {
@@ -77,7 +79,13 @@ function ProductsContent() {
           </p>
         </div>
 
-        <div className="mb-10 grid gap-4 rounded-2xl bg-white p-5 shadow-sm md:grid-cols-3">
+        <div className="mb-6 flex items-center justify-between md:hidden">
+          <p className="text-sm text-gray-500">{filteredProducts.length} منتج</p>
+          <button type="button" onClick={() => setShowFilters(true)} className="flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm"><SlidersHorizontal size={17}/> فلترة وترتيب</button>
+        </div>
+
+        <div className={`mb-10 grid gap-4 rounded-2xl bg-white p-5 shadow-sm md:grid-cols-3 ${showFilters ? "fixed inset-x-3 top-24 z-[70] max-h-[70vh] overflow-auto" : "hidden md:grid"}`}>
+          {showFilters && <div className="col-span-full flex items-center justify-between border-b pb-3 md:hidden"><b>فلترة المنتجات</b><button type="button" onClick={() => setShowFilters(false)}><X size={20}/></button></div>}
           <div className="flex items-center gap-3 rounded-xl border px-4">
             <Search size={20} />
             <input
@@ -113,8 +121,9 @@ function ProductsContent() {
           </select>
         </div>
 
-        <div className="mb-6 text-sm text-gray-500">
-          {filteredProducts.length} منتجات
+        <div className="mb-6 flex items-center justify-between text-sm text-gray-500">
+          <span>{filteredProducts.length} منتج</span>
+          {(search || category !== "الكل" || sort !== "default") && <button type="button" onClick={() => { setSearch(""); setCategory("الكل"); setSort("default"); setShowFilters(false) }} className="flex items-center gap-1 text-[var(--brand-dark)]">مسح الفلاتر <X size={14}/></button>}
         </div>
 
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 md:gap-6">
@@ -126,16 +135,14 @@ function ProductsContent() {
             >
               <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-[#eee]">
                 <img
-                  src={product.image}
+                  src={product.images?.[0] || product.image}
                   alt={product.name}
                   className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                 />
 
-                {product.badge && (
-                  <span className="absolute right-3 top-3 rounded-full bg-white px-3 py-1 text-xs">
-                    {product.badge}
-                  </span>
-                )}
+                {product.badge && <span className="absolute right-3 top-3 rounded-full bg-white px-3 py-1 text-xs">{product.badge}</span>}
+                {product.stock !== undefined && product.stock <= 0 && <span className="absolute bottom-3 right-3 rounded-full bg-black px-3 py-1 text-[10px] text-white">نفد المخزون</span>}
+                {product.stock !== undefined && product.stock > 0 && product.stock <= (product.lowStockThreshold ?? 5) && <span className="absolute bottom-3 right-3 rounded-full bg-white/95 px-3 py-1 text-[10px]">متبقي {product.stock}</span>}
 
                 <button
                   onClick={(e) => {
@@ -177,11 +184,15 @@ function ProductsContent() {
         </div>
 
         {filteredProducts.length === 0 && (
-          <div className="py-20 text-center text-gray-500">
-            لا توجد منتجات مطابقة للبحث.
+          <div className="rounded-3xl bg-white py-20 text-center text-gray-500">
+            <ShoppingBag size={32} className="mx-auto mb-4" strokeWidth={1.3}/>
+            <p>لا توجد منتجات مطابقة للبحث.</p>
+            <button type="button" onClick={() => { setSearch(""); setCategory("الكل"); setSort("default") }} className="mt-5 rounded-full bg-black px-6 py-3 text-sm text-white">عرض كل المنتجات</button>
           </div>
         )}
       </section>
+      <StoreFooter />
+
     </main>
   )
 }

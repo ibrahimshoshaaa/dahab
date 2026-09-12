@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import { fetchSettings, type SiteSettings } from "../lib/api"
 import SiteHeader from "../components/SiteHeader"
+import StoreFooter from "../components/StoreFooter"
 
 const DEFAULT_SETTINGS: SiteSettings = {
   returns_period_days: "14",
@@ -161,6 +162,8 @@ export default function ReturnsPage() {
           </Link>
         </div>
       </section>
+      <StoreFooter />
+
     </main>
   )
 }

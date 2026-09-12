@@ -72,7 +72,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (existing) {
         return current.map((item) =>
           item === existing
-            ? { ...item, quantity: item.quantity + quantity }
+            ? { ...item, quantity: Math.min(item.stock ?? 99, item.quantity + quantity) }
             : item
         )
       }
@@ -81,7 +81,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         ...current,
         {
           ...product,
-          quantity,
+          quantity: Math.min(product.stock ?? 99, quantity),
           selectedColor,
           selectedSize,
         },

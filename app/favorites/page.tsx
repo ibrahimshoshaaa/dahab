@@ -5,6 +5,7 @@ import { ArrowRight, ArrowLeft, Heart, Trash2, ShoppingBag } from "lucide-react"
 import { useFavorites } from "../context/FavoritesContext"
 import { useCart } from "../context/CartContext"
 import SiteHeader from "../components/SiteHeader"
+import StoreFooter from "../components/StoreFooter"
 
 export default function FavoritesPage() {
   const { favorites, removeFavorite, mounted } = useFavorites()
@@ -123,6 +124,8 @@ export default function FavoritesPage() {
           </div>
         )}
       </section>
+      <StoreFooter />
+
     </main>
   )
 }

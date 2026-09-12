@@ -19,6 +19,7 @@ import { useCart } from "../../context/CartContext"
 import { useFavorites } from "../../context/FavoritesContext"
 import SiteHeader from "../../components/SiteHeader"
 import ProductCardImages from "../../components/ProductCardImages"
+import StoreFooter from "../../components/StoreFooter"
 
 export default function ProductDetails({
   params,
@@ -119,6 +120,7 @@ export default function ProductDetails({
   }
 
   function handleAddToCart() {
+    if (product?.stock !== undefined && product.stock <= 0) return
     addToCart(
       product!,
       quantity,
@@ -318,6 +320,12 @@ export default function ProductDetails({
 
             <div className="mt-7">
 
+              {product.stock !== undefined && (
+                <div className={`mb-4 rounded-2xl px-4 py-3 text-sm ${product.stock <= 0 ? "bg-red-50 text-red-700" : product.stock <= (product.lowStockThreshold ?? 5) ? "bg-amber-50 text-amber-700" : "bg-[var(--bg)] text-gray-600"}`}>
+                  {product.stock <= 0 ? "هذا المنتج غير متوفر حاليًا" : product.stock <= (product.lowStockThreshold ?? 5) ? `متبقي ${product.stock} فقط — اطلبي الآن` : "متوفر وجاهز للطلب"}
+                </div>
+              )}
+
               <h3 className="mb-3 font-semibold">
                 الكمية
               </h3>
@@ -340,10 +348,9 @@ export default function ProductDetails({
                   </span>
 
                   <button
-                    onClick={() =>
-                      setQuantity((value) => value + 1)
-                    }
-                    className="flex h-14 w-12 items-center justify-center"
+                    onClick={() => setQuantity((value) => Math.min(product.stock ?? 99, value + 1))}
+                    disabled={product.stock !== undefined && product.stock <= quantity}
+                    className="flex h-14 w-12 items-center justify-center disabled:opacity-30"
                   >
                     <Plus size={17} />
                   </button>
@@ -361,18 +368,19 @@ export default function ProductDetails({
                 ) : (
                   <button
                     onClick={handleAddToCart}
-                    className="flex flex-1 items-center justify-center gap-3 rounded-full bg-black py-4 text-white transition hover:bg-[var(--brand-dark)]"
+                    disabled={product.stock !== undefined && product.stock <= 0}
+                    className="flex flex-1 items-center justify-center gap-3 rounded-full bg-black py-4 text-white transition hover:bg-[var(--brand-dark)] disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <ShoppingBag size={20} />
-                    إضافة للسلة
+                    {product.stock !== undefined && product.stock <= 0 ? "غير متوفر" : "إضافة للسلة"}
                   </button>
                 )}
 
               </div>
 
               <Link
-                href="/checkout"
-                onClick={handleAddToCart}
+                href={product.stock !== undefined && product.stock <= 0 ? "#" : "/checkout"}
+                onClick={(e) => { if (product.stock !== undefined && product.stock <= 0) e.preventDefault(); else handleAddToCart() }}
                 className="mt-3 flex items-center justify-center gap-2 rounded-full bg-[var(--brand-dark)] py-4 text-white transition hover:bg-black"
               >
                 <Sparkles size={18} />
@@ -527,6 +535,8 @@ export default function ProductDetails({
         )}
 
       </section>
+
+      <StoreFooter />
 
     </main>
   )

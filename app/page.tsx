@@ -9,6 +9,7 @@ import ProductCardImages from "./components/ProductCardImages"
 import { Heart, ShoppingBag, ArrowLeft, Truck, RotateCcw, ShieldCheck } from "lucide-react";
 import SiteLogo from "./components/SiteLogo"
 import SiteHeader from "./components/SiteHeader"
+import StoreFooter from "./components/StoreFooter"
 
 const DEFAULT_SETTINGS: SiteSettings = {
   hero_image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=2000&q=90",
@@ -289,46 +290,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Footer ── */}
-      <footer id="footer" className="bg-[var(--ink)] px-5 py-14 text-white">
-        <div className="mx-auto grid max-w-7xl gap-12 md:grid-cols-4">
-
-          <div className="md:col-span-2">
-            <SiteLogo className="h-10 w-auto object-contain" />
-            <p className="mt-5 max-w-sm text-sm leading-8 text-white/50">
-              {s(settings, "footer_description")}
-            </p>
-            <div className="mt-6 flex gap-4">
-              <span className="text-sm font-medium">Instagram</span>
-              <span className="text-sm font-medium">Facebook</span>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="mb-5 text-sm text-[var(--brand-soft)]">تسوقي</h3>
-            <div className="space-y-3 text-sm text-white/50">
-              <a className="block" href="#products">العبايات</a>
-              <a className="block" href="#accessories">الإكسسوارات</a>
-              <a className="block" href="#new">وصل حديثًا</a>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="mb-5 text-sm text-[var(--brand-soft)]">مساعدة</h3>
-            <div className="space-y-3 text-sm text-white/50">
-              <Link className="block hover:text-white transition" href="/track">تتبع طلبك</Link>
-              <Link className="block" href="/contact">تواصل معنا</Link>
-              <Link className="block" href="/shipping">الشحن والتوصيل</Link>
-              <Link className="block" href="/returns">الاستبدال والاسترجاع</Link>
-            </div>
-          </div>
-
-        </div>
-
-        <div className="mx-auto mt-14 max-w-7xl border-t border-white/10 pt-6 text-center text-[11px] text-white/30">
-          © 2026 DAHAB — جميع الحقوق محفوظة
-        </div>
-      </footer>
+      <StoreFooter />
 
     </main>
   );

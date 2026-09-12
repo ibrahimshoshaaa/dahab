@@ -29,7 +29,16 @@ async function fetchThemeSettings(): Promise<Record<string, string>> {
 
 export const metadata: Metadata = {
   title: "DAHAB | دهب — عبايات وإكسسوارات",
-  description: "دهب — عبايات مصرية وإكسسوارات",
+  description: "دهب — عبايات مصرية وإكسسوارات مختارة بعناية.",
+  applicationName: "DAHAB",
+  keywords: ["دهب", "Dahab", "عبايات", "عبايات مصرية", "إكسسوارات"],
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "DAHAB | دهب",
+    description: "عبايات مصرية وإكسسوارات مختارة بعناية.",
+    type: "website",
+    locale: "ar_EG",
+  },
 }
 
 export default async function RootLayout({

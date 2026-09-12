@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import { fetchSettings, type SiteSettings } from "../lib/api"
 import SiteHeader from "../components/SiteHeader"
+import StoreFooter from "../components/StoreFooter"
 
 const DEFAULT_SETTINGS: SiteSettings = {
   shipping_fast_governorates: "القاهرة, الجيزة, القليوبية, الإسكندرية",
@@ -177,6 +178,8 @@ export default function ShippingPage() {
           <p className="leading-7">{s(settings, "shipping_note")}</p>
         </div>
       </section>
+      <StoreFooter />
+
     </main>
   )
 }

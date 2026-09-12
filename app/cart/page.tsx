@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import { useCart } from "../context/CartContext"
 import SiteHeader from "../components/SiteHeader"
+import StoreFooter from "../components/StoreFooter"
 
 export default function CartPage() {
   const {
@@ -296,6 +297,8 @@ export default function CartPage() {
         )}
 
       </section>
+
+      <StoreFooter />
 
     </main>
   )

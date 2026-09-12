@@ -119,7 +119,7 @@ app.get("/api/products", async (req, res) => {
 
 app.get("/api/products/:slug", async (req, res) => {
   try {
-    const result = await db.execute({ sql: "SELECT * FROM products WHERE slug = ?", args: [req.params.slug] })
+    const result = await db.execute({ sql: "SELECT * FROM products WHERE slug = ? AND active = 1", args: [req.params.slug] })
     if (!result.rows[0]) return res.status(404).json({ success: false, message: "المنتج غير موجود" })
     res.json({ success: true, product: parseProduct(result.rows[0]) })
   } catch (error) {
@@ -311,41 +311,101 @@ app.get("/api/orders", requireAdmin, async (req, res) => {
 
 app.post("/api/orders", async (req, res) => {
   try {
-    const { customer_name, phone, governorate, area, address, notes, items, total, coupon_code } = req.body
-    if (!customer_name || !phone || !governorate || !area || !address || !Array.isArray(items) || items.length === 0 || total === undefined) {
+    const { customer_name, phone, governorate, area, address, notes, items, total, coupon_code } = req.body || {}
+    if (!customer_name || !phone || !governorate || !area || !address || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, message: "بيانات الطلب غير مكتملة" })
     }
-    const subtotal = items.reduce((sum, item) => sum + Number(item.price || 0) * Math.max(1, Number(item.quantity || 0)), 0)
-    let discount = 0, coupon = null
+
+    const normalizedItems = []
+    const quantities = new Map()
+
+    for (const item of items) {
+      const productId = Number(item.product_id)
+      const quantity = Math.floor(Number(item.quantity))
+      if (!Number.isInteger(productId) || productId <= 0 || !Number.isInteger(quantity) || quantity <= 0) {
+        return res.status(400).json({ success: false, message: "بيانات المنتجات غير صحيحة" })
+      }
+      quantities.set(productId, (quantities.get(productId) || 0) + quantity)
+    }
+
+    // Never trust product names/prices sent by the browser. Re-read the current catalog.
+    for (const [productId, quantity] of quantities) {
+      const pr = await db.execute({ sql: "SELECT id,name,price,stock,active FROM products WHERE id = ?", args: [productId] })
+      const product = pr.rows[0]
+      if (!product || !product.active) return res.status(400).json({ success: false, message: "أحد المنتجات لم يعد متاحًا" })
+      if (Number(product.stock || 0) < quantity) {
+        return res.status(400).json({ success: false, message: `الكمية غير متوفرة من ${product.name}. المتاح: ${Number(product.stock || 0)}` })
+      }
+      const matching = items.filter((item) => Number(item.product_id) === productId)
+      for (const item of matching) {
+        const qty = Math.floor(Number(item.quantity))
+        normalizedItems.push({
+          product_id: productId,
+          product_name: product.name,
+          price: Number(product.price),
+          quantity: qty,
+          selected_color: item.selected_color || null,
+          selected_size: item.selected_size || null,
+        })
+      }
+    }
+
+    const subtotal = normalizedItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+    let discount = 0
+    let coupon = null
     if (coupon_code) {
-      const cr = await db.execute({sql:"SELECT * FROM coupons WHERE code=?",args:[String(coupon_code).trim().toUpperCase()]})
+      const cr = await db.execute({ sql: "SELECT * FROM coupons WHERE code = ?", args: [String(coupon_code).trim().toUpperCase()] })
       coupon = cr.rows[0]
       discount = couponDiscount(coupon, subtotal)
-      if (!coupon || discount <= 0) return res.status(400).json({success:false,message:"الكوبون غير صالح أو انتهت صلاحيته"})
+      if (!coupon || discount <= 0) return res.status(400).json({ success: false, message: "الكوبون غير صالح أو انتهت صلاحيته" })
     }
-    const finalTotal = Math.max(0, subtotal - discount)
-    if (Math.abs(Number(total) - finalTotal) > 0.01) return res.status(400).json({success:false,message:"قيمة الطلب غير متطابقة، أعد المحاولة"})
 
-    // Validate and reserve stock before creating the order.
-    for (const item of items) {
-      const qty = Math.max(1, Math.floor(Number(item.quantity || 0)))
-      const pr = await db.execute({sql:"SELECT id,name,stock FROM products WHERE id=?",args:[Number(item.product_id)]})
-      if (!pr.rows[0]) return res.status(400).json({success:false,message:`المنتج غير موجود: ${item.product_name || ""}`})
-      if (Number(pr.rows[0].stock || 0) < qty) return res.status(400).json({success:false,message:`الكمية غير متوفرة من ${pr.rows[0].name}. المتاح: ${Number(pr.rows[0].stock || 0)}`})
+    const finalTotal = Math.max(0, subtotal - discount)
+    if (total !== undefined && Math.abs(Number(total) - finalTotal) > 0.01) {
+      return res.status(400).json({ success: false, message: "تغيرت أسعار المنتجات، أعد مراجعة السلة ثم حاول مرة أخرى" })
     }
 
     let trackingCode = generateTrackingCode()
-    while (true) { const check = await db.execute({ sql: "SELECT 1 FROM orders WHERE tracking_code = ?", args: [trackingCode] }); if (!check.rows[0]) break; trackingCode = generateTrackingCode() }
-    const orderResult = await db.execute({ sql:`INSERT INTO orders (customer_name,phone,governorate,area,address,notes,total,tracking_code) VALUES (?,?,?,?,?,?,?,?)`, args:[customer_name,phone,governorate,area,address,notes||"",finalTotal,trackingCode] })
-    const orderId=Number(orderResult.lastInsertRowid)
-    for (const item of items) {
-      const qty=Math.max(1,Math.floor(Number(item.quantity||0)))
-      await db.execute({sql:`INSERT INTO order_items (order_id,product_id,product_name,price,quantity,selected_color,selected_size) VALUES (?,?,?,?,?,?,?)`,args:[orderId,Number(item.product_id),item.product_name,Number(item.price),qty,item.selected_color||null,item.selected_size||null]})
-      await db.execute({sql:"UPDATE products SET stock=stock-? WHERE id=? AND stock>=?",args:[qty,Number(item.product_id),qty]})
+    while (true) {
+      const check = await db.execute({ sql: "SELECT 1 FROM orders WHERE tracking_code = ?", args: [trackingCode] })
+      if (!check.rows[0]) break
+      trackingCode = generateTrackingCode()
     }
-    if(coupon) await db.execute({sql:"UPDATE coupons SET used_count=used_count+1 WHERE id=?",args:[coupon.id]})
-    res.status(201).json({success:true,message:"تم إنشاء الطلب بنجاح",order_id:orderId,tracking_code:trackingCode,discount})
-  } catch(error){ console.error(error); res.status(500).json({success:false,message:"حدث خطأ أثناء إنشاء الطلب"}) }
+
+    const orderResult = await db.execute({
+      sql: `INSERT INTO orders (customer_name,phone,governorate,area,address,notes,total,status,tracking_code,coupon_code,discount)
+            VALUES (?,?,?,?,?,?,?,'جديد',?,?,?)`,
+      args: [customer_name, phone, governorate, area, address, notes || "", finalTotal, trackingCode, coupon ? coupon.code : null, discount],
+    })
+    const orderId = Number(orderResult.lastInsertRowid)
+
+    for (const item of normalizedItems) {
+      await db.execute({
+        sql: `INSERT INTO order_items (order_id,product_id,product_name,price,quantity,selected_color,selected_size)
+              VALUES (?,?,?,?,?,?,?)`,
+        args: [orderId, item.product_id, item.product_name, item.price, item.quantity, item.selected_color, item.selected_size],
+      })
+    }
+
+    for (const [productId, quantity] of quantities) {
+      const updated = await db.execute({
+        sql: "UPDATE products SET stock=stock-? WHERE id=? AND stock>=?",
+        args: [quantity, productId, quantity],
+      })
+      if (updated.rowsAffected !== 1) {
+        return res.status(409).json({ success: false, message: "تغير المخزون أثناء إتمام الطلب، راجعي السلة وحاولي مرة أخرى" })
+      }
+    }
+
+    if (coupon) {
+      await db.execute({ sql: "UPDATE coupons SET used_count=used_count+1 WHERE id=?", args: [coupon.id] })
+    }
+
+    res.status(201).json({ success: true, message: "تم إنشاء الطلب بنجاح", order_id: orderId, tracking_code: trackingCode, discount, total: finalTotal })
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ success: false, message: "حدث خطأ أثناء إنشاء الطلب" })
+  }
 })
 
 app.get("/api/orders/track/:code", async (req, res) => {

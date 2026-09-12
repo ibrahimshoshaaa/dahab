@@ -6,6 +6,7 @@ import Link from "next/link"
 import { ArrowRight, PackageSearch } from "lucide-react"
 import { fetchOrderByCode } from "../lib/api"
 import SiteHeader from "../components/SiteHeader"
+import StoreFooter from "../components/StoreFooter"
 
 type OrderResult = {
   order: {
@@ -171,6 +172,8 @@ function TrackContent() {
           </div>
         )}
       </section>
+      <StoreFooter />
+
     </main>
   )
 }

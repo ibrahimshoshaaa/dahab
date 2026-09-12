@@ -114,6 +114,17 @@ async function initDb() {
     }
   }
 
+  // order pricing history migrations
+  const orderInfo = await db.execute("PRAGMA table_info(orders)")
+  const orderColumns = new Set(orderInfo.rows.map((row) => row.name))
+  const orderMigrations = [
+    ["coupon_code", "ALTER TABLE orders ADD COLUMN coupon_code TEXT"],
+    ["discount", "ALTER TABLE orders ADD COLUMN discount REAL NOT NULL DEFAULT 0"],
+  ]
+  for (const [column, sql] of orderMigrations) {
+    if (!orderColumns.has(column)) await db.execute(sql)
+  }
+
   // seed products
   const productCount = await db.execute("SELECT COUNT(*) AS count FROM products")
   if (productCount.rows[0].count === 0) {

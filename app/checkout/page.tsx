@@ -15,6 +15,7 @@ import {
 import { useCart } from "../context/CartContext"
 import { createOrder, validateCoupon } from "../lib/api"
 import SiteHeader from "../components/SiteHeader"
+import StoreFooter from "../components/StoreFooter"
 
 const governorates = [
   "القاهرة",
@@ -75,13 +76,18 @@ export default function CheckoutPage() {
       alert("من فضلك أكمل جميع البيانات المطلوبة")
       return
     }
+    const normalizedPhone = phone.replace(/\s|-/g, "")
+    if (!/^(01[0125]\d{8}|\+?20[0125]1\d{8})$/.test(normalizedPhone)) {
+      alert("من فضلك أدخل رقم موبايل مصري صحيح")
+      return
+    }
 
     setSubmitting(true)
 
     try {
       const { orderId, trackingCode } = await createOrder({
         customer_name: name,
-        phone,
+        phone: normalizedPhone,
         governorate,
         area,
         address,
@@ -569,7 +575,7 @@ export default function CheckoutPage() {
                   <button type="button" disabled={couponLoading||!couponCode.trim()} onClick={async()=>{setCouponLoading(true);setCouponError("");try{const r=await validateCoupon(couponCode,cartTotal);setDiscount(r.discount)}catch(e){setDiscount(0);setCouponError(e instanceof Error?e.message:"الكوبون غير صالح")}finally{setCouponLoading(false)}}} className="rounded-xl bg-black px-4 text-sm text-white disabled:opacity-50">{couponLoading?"...":"تطبيق"}</button>
                 </div>
                 {couponError&&<p className="mt-2 text-xs text-red-600">{couponError}</p>}
-                {discount>0&&<p className="mt-2 text-xs text-emerald-600">تم تطبيق الخصم: {discount.toLocaleString("ar-EG")} جنيه</p>}
+                {discount>0&&<div className="mt-2 flex items-center justify-between gap-2 text-xs text-emerald-600"><span>تم تطبيق الخصم: {discount.toLocaleString("ar-EG")} جنيه</span><button type="button" onClick={()=>{setCouponCode("");setDiscount(0);setCouponError("")}} className="underline">إزالة</button></div>}
               </div>
 
               {/* Payment */}
@@ -623,6 +629,8 @@ export default function CheckoutPage() {
         </form>
 
       </section>
+
+      <StoreFooter />
 
     </main>
   )

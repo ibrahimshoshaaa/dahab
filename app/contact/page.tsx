@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import { fetchSettings, submitContactMessage, type SiteSettings } from "../lib/api"
 import SiteHeader from "../components/SiteHeader"
+import StoreFooter from "../components/StoreFooter"
 
 const DEFAULT_SETTINGS: SiteSettings = {
   contact_phone: "01000000000",
@@ -245,6 +246,8 @@ export default function ContactPage() {
           </div>
         </div>
       </section>
+      <StoreFooter />
+
     </main>
   )
 }
