@@ -21,6 +21,8 @@ export type Product = {
   sizeChart?: SizeChart
   materialDetails?: string
   careInstructions?: string
+  stock?: number
+  lowStockThreshold?: number
 }
 
 export const products: Product[] = [

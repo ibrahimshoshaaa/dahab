@@ -61,6 +61,8 @@ async function initDb() {
       size_chart TEXT NOT NULL DEFAULT '{}',
       material_details TEXT NOT NULL DEFAULT '',
       care_instructions TEXT NOT NULL DEFAULT '',
+      stock INTEGER NOT NULL DEFAULT 20,
+      low_stock_threshold INTEGER NOT NULL DEFAULT 5,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -90,6 +92,8 @@ async function initDb() {
     ["size_chart", "ALTER TABLE products ADD COLUMN size_chart TEXT NOT NULL DEFAULT '{}'"],
     ["material_details", "ALTER TABLE products ADD COLUMN material_details TEXT NOT NULL DEFAULT ''"],
     ["care_instructions", "ALTER TABLE products ADD COLUMN care_instructions TEXT NOT NULL DEFAULT ''"],
+    ["stock", "ALTER TABLE products ADD COLUMN stock INTEGER NOT NULL DEFAULT 20"],
+    ["low_stock_threshold", "ALTER TABLE products ADD COLUMN low_stock_threshold INTEGER NOT NULL DEFAULT 5"],
   ]
   for (const [column, sql] of migrations) {
     if (!existingColumns.has(column)) {

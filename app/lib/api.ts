@@ -193,6 +193,13 @@ export async function deleteProduct(id: number) {
   return adminFetch(`/api/admin/products/${id}`, { method: "DELETE" })
 }
 
+export async function updateProductStock(id: number, stock: number) {
+  return adminFetch(`/api/admin/products/${id}/stock`, {
+    method: "PATCH",
+    body: JSON.stringify({ stock }),
+  })
+}
+
 // ---------- settings ----------
 
 export type SiteSettings = Record<string, string>

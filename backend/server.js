@@ -71,6 +71,8 @@ function parseProduct(row) {
     featured: !!row.featured,
     bestSeller: !!row.best_seller,
     active: !!row.active,
+    stock: Number(row.stock ?? 0),
+    lowStockThreshold: Number(row.low_stock_threshold ?? 5),
   }
 }
 
@@ -143,6 +145,7 @@ app.post("/api/admin/products", requireAdmin, async (req, res) => {
     const {
       name, category, price, oldPrice, image, images, badge, colors, sizes, description,
       featured, bestSeller, active, sizeChart, materialDetails, careInstructions,
+      stock, lowStockThreshold,
     } = req.body || {}
     const imageList = Array.isArray(images) ? images.filter(Boolean) : []
     const mainImage = image || imageList[0]
@@ -153,13 +156,14 @@ app.post("/api/admin/products", requireAdmin, async (req, res) => {
     const exists = await db.execute({ sql: "SELECT id FROM products WHERE slug = ?", args: [slug] })
     if (exists.rows[0]) slug = `${slug}-${Date.now()}`
     const result = await db.execute({
-      sql: `INSERT INTO products (slug,name,category,price,old_price,image,images,badge,colors,sizes,description,featured,best_seller,active,size_chart,material_details,care_instructions)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      sql: `INSERT INTO products (slug,name,category,price,old_price,image,images,badge,colors,sizes,description,featured,best_seller,active,size_chart,material_details,care_instructions,stock,low_stock_threshold)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       args: [slug, name, category, Number(price), oldPrice ? Number(oldPrice) : null, mainImage,
              JSON.stringify(imageList.length ? imageList : [mainImage]), badge || null,
              JSON.stringify(colors || []), JSON.stringify(sizes || []), description || "",
              featured ? 1 : 0, bestSeller ? 1 : 0, active === false ? 0 : 1,
-             JSON.stringify(sizeChart || {}), materialDetails || "", careInstructions || ""]
+             JSON.stringify(sizeChart || {}), materialDetails || "", careInstructions || "",
+             Math.max(0, Number(stock ?? 20)), Math.max(0, Number(lowStockThreshold ?? 5))]
     })
     res.status(201).json({ success: true, id: Number(result.lastInsertRowid), slug })
   } catch (error) {
@@ -177,11 +181,12 @@ app.put("/api/admin/products/:id", requireAdmin, async (req, res) => {
     const {
       name, slug, category, price, oldPrice, image, images, badge, colors, sizes, description,
       featured, bestSeller, active, sizeChart, materialDetails, careInstructions,
+      stock, lowStockThreshold,
     } = req.body || {}
     const imageList = Array.isArray(images) ? images.filter(Boolean) : undefined
     const mainImage = image ?? imageList?.[0]
     await db.execute({
-      sql: `UPDATE products SET slug=?,name=?,category=?,price=?,old_price=?,image=?,images=?,badge=?,colors=?,sizes=?,description=?,featured=?,best_seller=?,active=?,size_chart=?,material_details=?,care_instructions=? WHERE id=?`,
+      sql: `UPDATE products SET slug=?,name=?,category=?,price=?,old_price=?,image=?,images=?,badge=?,colors=?,sizes=?,description=?,featured=?,best_seller=?,active=?,size_chart=?,material_details=?,care_instructions=?,stock=?,low_stock_threshold=? WHERE id=?`,
       args: [slug ?? e.slug, name ?? e.name, category ?? e.category,
              price !== undefined ? Number(price) : e.price,
              oldPrice !== undefined ? (oldPrice ? Number(oldPrice) : null) : e.old_price,
@@ -197,12 +202,33 @@ app.put("/api/admin/products/:id", requireAdmin, async (req, res) => {
              sizeChart !== undefined ? JSON.stringify(sizeChart) : e.size_chart,
              materialDetails !== undefined ? materialDetails : e.material_details,
              careInstructions !== undefined ? careInstructions : e.care_instructions,
+             stock !== undefined ? Math.max(0, Number(stock)) : Number(e.stock ?? 0),
+             lowStockThreshold !== undefined ? Math.max(0, Number(lowStockThreshold)) : Number(e.low_stock_threshold ?? 5),
              id]
     })
     res.json({ success: true })
   } catch (error) {
     console.error(error)
     res.status(500).json({ success: false, message: "حدث خطأ أثناء تعديل المنتج" })
+  }
+})
+
+app.patch("/api/admin/products/:id/stock", requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params.id)
+    const stock = Number(req.body?.stock)
+    if (!Number.isInteger(stock) || stock < 0) {
+      return res.status(400).json({ success: false, message: "الكمية يجب أن تكون رقمًا صحيحًا غير سالب" })
+    }
+    const result = await db.execute({
+      sql: "UPDATE products SET stock = ? WHERE id = ?",
+      args: [stock, id],
+    })
+    if (result.rowsAffected === 0) return res.status(404).json({ success: false, message: "المنتج غير موجود" })
+    res.json({ success: true, stock })
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ success: false, message: "حدث خطأ أثناء تحديث المخزون" })
   }
 })
 

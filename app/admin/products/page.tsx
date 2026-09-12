@@ -37,6 +37,8 @@ const emptyForm = {
   sizeChartRows: [["", "", ""]] as string[][],
   materialDetails: "",
   careInstructions: "",
+  stock: "20",
+  lowStockThreshold: "5",
 }
 
 // ── ProductImageSlot: صورة واحدة برفع من الجهاز أو رابط ────────────────────────
@@ -184,6 +186,8 @@ export default function AdminProductsPage() {
       sizeChartRows,
       materialDetails: product.materialDetails || "",
       careInstructions: product.careInstructions || "",
+      stock: String(product.stock ?? 0),
+      lowStockThreshold: String(product.lowStockThreshold ?? 5),
     })
     setShowForm(true)
   }
@@ -292,6 +296,8 @@ export default function AdminProductsPage() {
       sizeChart,
       materialDetails: form.materialDetails || undefined,
       careInstructions: form.careInstructions || undefined,
+      stock: Math.max(0, Number(form.stock || 0)),
+      lowStockThreshold: Math.max(0, Number(form.lowStockThreshold || 0)),
     }
 
     try {
@@ -378,9 +384,20 @@ export default function AdminProductsPage() {
                     )}
                   </div>
 
-                  <p className="mt-2 text-sm font-semibold">
-                    {product.price.toLocaleString("ar-EG")} جنيه
-                  </p>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold">
+                      {product.price.toLocaleString("ar-EG")} جنيه
+                    </p>
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                        (product.stock ?? 0) <= (product.lowStockThreshold ?? 5)
+                          ? "bg-red-50 text-red-600"
+                          : "bg-emerald-50 text-emerald-700"
+                      }`}
+                    >
+                      مخزون: {(product.stock ?? 0).toLocaleString("ar-EG")}
+                    </span>
+                  </div>
 
                   <div className="mt-4 flex gap-2">
                     <button
@@ -460,6 +477,31 @@ export default function AdminProductsPage() {
                   onChange={(e) => setForm({ ...form, oldPrice: e.target.value })}
                   className="w-full rounded-xl border border-black/10 px-4 py-2.5 text-sm outline-none"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs text-gray-500">الكمية الحالية</label>
+                  <input
+                    required
+                    min="0"
+                    type="number"
+                    value={form.stock}
+                    onChange={(e) => setForm({ ...form, stock: e.target.value })}
+                    className="w-full rounded-xl border border-black/10 px-4 py-2.5 text-sm outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-gray-500">تنبيه عند الوصول إلى</label>
+                  <input
+                    required
+                    min="0"
+                    type="number"
+                    value={form.lowStockThreshold}
+                    onChange={(e) => setForm({ ...form, lowStockThreshold: e.target.value })}
+                    className="w-full rounded-xl border border-black/10 px-4 py-2.5 text-sm outline-none"
+                  />
+                </div>
               </div>
 
               <div>
