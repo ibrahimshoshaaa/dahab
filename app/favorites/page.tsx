@@ -4,7 +4,7 @@ import Link from "next/link"
 import { ArrowRight, ArrowLeft, Heart, Trash2, ShoppingBag } from "lucide-react"
 import { useFavorites } from "../context/FavoritesContext"
 import { useCart } from "../context/CartContext"
-import SiteLogo from "../components/SiteLogo"
+import SiteHeader from "../components/SiteHeader"
 
 export default function FavoritesPage() {
   const { favorites, removeFavorite, mounted } = useFavorites()
@@ -12,12 +12,10 @@ export default function FavoritesPage() {
 
   return (
     <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
-      <header className="sticky top-0 z-50 border-b border-black/10 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
-          <Link href="/" className="flex items-center">
-            <SiteLogo className="h-10 w-auto object-contain" />
-          </Link>
+      <SiteHeader />
 
+      <div className="border-b border-black/5 bg-white">
+        <div className="mx-auto flex max-w-7xl justify-end px-5 py-3">
           <Link
             href="/products"
             className="flex items-center gap-2 text-sm text-gray-600"
@@ -26,7 +24,7 @@ export default function FavoritesPage() {
             متابعة التسوق
           </Link>
         </div>
-      </header>
+      </div>
 
       <section className="mx-auto max-w-7xl px-5 py-10">
         <div className="mb-10">

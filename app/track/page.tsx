@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowRight, PackageSearch } from "lucide-react"
 import { fetchOrderByCode } from "../lib/api"
-import SiteLogo from "../components/SiteLogo"
+import SiteHeader from "../components/SiteHeader"
 
 type OrderResult = {
   order: {
@@ -59,12 +59,10 @@ function TrackContent() {
 
   return (
     <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
-      <header className="border-b border-black/10 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
-          <Link href="/" className="flex items-center">
-            <SiteLogo className="h-10 w-auto object-contain" />
-          </Link>
+      <SiteHeader />
 
+      <div className="border-b border-black/5 bg-white">
+        <div className="mx-auto flex max-w-7xl justify-end px-5 py-3">
           <Link
             href="/products"
             className="flex items-center gap-2 text-sm text-gray-600"
@@ -73,7 +71,7 @@ function TrackContent() {
             متابعة التسوق
           </Link>
         </div>
-      </header>
+      </div>
 
       <section className="mx-auto max-w-xl px-5 py-16">
         <div className="mb-8 text-center">

@@ -14,10 +14,11 @@ import {
   Sparkles,
 } from "lucide-react"
 import { type Product } from "../../data/products"
-import { fetchProductBySlug } from "../../lib/api"
+import { fetchProductBySlug, fetchProducts } from "../../lib/api"
 import { useCart } from "../../context/CartContext"
 import { useFavorites } from "../../context/FavoritesContext"
-import SiteLogo from "../../components/SiteLogo"
+import SiteHeader from "../../components/SiteHeader"
+import ProductCardImages from "../../components/ProductCardImages"
 
 export default function ProductDetails({
   params,
@@ -27,6 +28,7 @@ export default function ProductDetails({
   const { slug } = use(params)
   const [product, setProduct] = useState<Product | undefined>(undefined)
   const [loading, setLoading] = useState(true)
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([])
 
   const { addToCart } = useCart()
   const { toggleFavorite, isFavorite } = useFavorites()
@@ -48,6 +50,11 @@ export default function ProductDetails({
       setActiveImage(0)
       setAdded(false)
       setLoading(false)
+    })
+
+    fetchProducts().then((all) => {
+      if (!active) return
+      setRelatedProducts(all.filter((item) => item.slug !== slug).slice(0, 4))
     })
 
     return () => {
@@ -135,22 +142,7 @@ export default function ProductDetails({
   return (
     <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
 
-      <header className="sticky top-0 z-50 border-b border-black/10 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
-
-          <Link href="/" className="flex items-center">
-            <SiteLogo className="h-10 w-auto object-contain" />
-          </Link>
-
-          <Link
-            href="/cart"
-            className="flex items-center gap-2"
-          >
-            <ShoppingBag size={22} />
-          </Link>
-
-        </div>
-      </header>
+      <SiteHeader />
 
       <section className="mx-auto max-w-7xl px-5 py-10">
 
@@ -178,6 +170,16 @@ export default function ProductDetails({
                 className="h-full w-full object-cover"
                 draggable={false}
               />
+
+              <button
+                onClick={() => toggleFavorite(product)}
+                className={`absolute left-3 top-3 flex h-10 w-10 items-center justify-center rounded-full transition ${
+                  isFavorite(product.id) ? "bg-[var(--brand-dark)] text-white" : "bg-white/90"
+                }`}
+                aria-label="إضافة للمفضلة"
+              >
+                <Heart size={18} className={isFavorite(product.id) ? "fill-white" : ""} />
+              </button>
 
               {galleryImages.length > 1 && (
                 <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
@@ -312,7 +314,7 @@ export default function ProductDetails({
               </div>
             )}
 
-            {/* الكمية */}
+            {/* الكمية + الأزرار */}
 
             <div className="mt-7">
 
@@ -320,40 +322,35 @@ export default function ProductDetails({
                 الكمية
               </h3>
 
-              <div className="flex h-12 w-fit items-center rounded-full border bg-white">
+              <div className="flex gap-3">
 
-                <button
-                  onClick={() =>
-                    setQuantity((value) => Math.max(1, value - 1))
-                  }
-                  className="flex h-12 w-12 items-center justify-center"
-                >
-                  <Minus size={17} />
-                </button>
+                <div className="flex h-14 shrink-0 items-center rounded-full border bg-white">
 
-                <span className="w-10 text-center font-medium">
-                  {quantity}
-                </span>
+                  <button
+                    onClick={() =>
+                      setQuantity((value) => Math.max(1, value - 1))
+                    }
+                    className="flex h-14 w-12 items-center justify-center"
+                  >
+                    <Minus size={17} />
+                  </button>
 
-                <button
-                  onClick={() =>
-                    setQuantity((value) => value + 1)
-                  }
-                  className="flex h-12 w-12 items-center justify-center"
-                >
-                  <Plus size={17} />
-                </button>
+                  <span className="w-10 text-center font-medium">
+                    {quantity}
+                  </span>
 
-              </div>
+                  <button
+                    onClick={() =>
+                      setQuantity((value) => value + 1)
+                    }
+                    className="flex h-14 w-12 items-center justify-center"
+                  >
+                    <Plus size={17} />
+                  </button>
 
-            </div>
+                </div>
 
-            {/* الأزرار */}
-
-            <div className="mt-8 flex gap-3">
-
-              {added ? (
-                <>
+                {added ? (
                   <button
                     onClick={handleAddToCart}
                     className="flex flex-1 items-center justify-center gap-2 rounded-full border-2 border-green-700 py-4 text-green-700 transition hover:bg-green-50"
@@ -361,36 +358,26 @@ export default function ProductDetails({
                     <Check size={20} />
                     تمت الإضافة ✓
                   </button>
-
-                  <Link
-                    href="/checkout"
-                    className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[var(--brand-dark)] py-4 text-white transition hover:bg-black"
+                ) : (
+                  <button
+                    onClick={handleAddToCart}
+                    className="flex flex-1 items-center justify-center gap-3 rounded-full bg-black py-4 text-white transition hover:bg-[var(--brand-dark)]"
                   >
-                    <Sparkles size={18} />
-                    إتمام الطلب
-                  </Link>
-                </>
-              ) : (
-                <button
-                  onClick={handleAddToCart}
-                  className="flex flex-1 items-center justify-center gap-3 rounded-full bg-black py-4 text-white transition hover:bg-[var(--brand-dark)]"
-                >
-                  <ShoppingBag size={20} />
-                  إضافة للسلة
-                </button>
-              )}
+                    <ShoppingBag size={20} />
+                    إضافة للسلة
+                  </button>
+                )}
 
-              <button
-                onClick={() => toggleFavorite(product)}
-                className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full border transition ${
-                  isFavorite(product.id)
-                    ? "border-[var(--brand-dark)] bg-[var(--brand-dark)] text-white"
-                    : "border-gray-300 bg-white"
-                }`}
-                aria-label="إضافة للمفضلة"
+              </div>
+
+              <Link
+                href="/checkout"
+                onClick={handleAddToCart}
+                className="mt-3 flex items-center justify-center gap-2 rounded-full bg-[var(--brand-dark)] py-4 text-white transition hover:bg-black"
               >
-                <Heart size={21} className={isFavorite(product.id) ? "fill-white" : ""} />
-              </button>
+                <Sparkles size={18} />
+                اشتري الآن
+              </Link>
 
             </div>
 
@@ -503,6 +490,41 @@ export default function ProductDetails({
           </div>
 
         </div>
+
+        {/* منتجات قد تعجبك */}
+
+        {relatedProducts.length > 0 && (
+          <div className="mt-16 border-t pt-10">
+            <h2 className="mb-6 text-2xl font-light sm:text-3xl">
+              قد يعجبك أيضًا
+            </h2>
+
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              {relatedProducts.map((item) => (
+                <Link key={item.slug} href={`/products/${item.slug}`} className="group block">
+                  <div className="relative aspect-[3/4] overflow-hidden bg-[var(--surface)]">
+                    <ProductCardImages
+                      images={item.images?.length ? item.images : [item.image]}
+                      alt={item.name}
+                      imgClassName="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                    />
+                  </div>
+                  <div className="pt-4">
+                    <h3 className="text-sm">{item.name}</h3>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-sm font-medium">{item.price} ج.م</span>
+                      {item.oldPrice && (
+                        <span className="text-xs text-gray-400 line-through">
+                          {item.oldPrice} ج.م
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
       </section>
 

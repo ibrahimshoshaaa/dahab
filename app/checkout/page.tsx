@@ -14,7 +14,7 @@ import {
 } from "lucide-react"
 import { useCart } from "../context/CartContext"
 import { createOrder } from "../lib/api"
-import SiteLogo from "../components/SiteLogo"
+import SiteHeader from "../components/SiteHeader"
 
 const governorates = [
   "القاهرة",
@@ -112,12 +112,10 @@ export default function CheckoutPage() {
   if (cart.length === 0 && !submitted) {
     return (
       <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
-        <header className="border-b border-black/10 bg-white">
-          <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
-            <Link href="/" className="flex items-center">
-            <SiteLogo className="h-10 w-auto object-contain" />
-          </Link>
+        <SiteHeader />
 
+        <div className="border-b border-black/5 bg-white">
+          <div className="mx-auto flex max-w-7xl justify-end px-5 py-3">
             <Link
               href="/products"
               className="flex items-center gap-2 text-sm text-gray-600"
@@ -126,7 +124,7 @@ export default function CheckoutPage() {
               متابعة التسوق
             </Link>
           </div>
-        </header>
+        </div>
 
         <section className="mx-auto flex min-h-[70vh] max-w-2xl items-center justify-center px-5">
           <div className="w-full rounded-3xl bg-white p-8 text-center shadow-sm">
@@ -255,13 +253,10 @@ export default function CheckoutPage() {
   return (
     <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
 
-      <header className="sticky top-0 z-50 border-b border-black/10 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
+      <SiteHeader />
 
-          <Link href="/" className="flex items-center">
-            <SiteLogo className="h-10 w-auto object-contain" />
-          </Link>
-
+      <div className="border-b border-black/5 bg-white">
+        <div className="mx-auto flex max-w-7xl justify-end px-5 py-3">
           <Link
             href="/cart"
             className="flex items-center gap-2 text-sm text-gray-600"
@@ -269,9 +264,8 @@ export default function CheckoutPage() {
             <ArrowRight size={18} />
             العودة للسلة
           </Link>
-
         </div>
-      </header>
+      </div>
 
       <section className="mx-auto max-w-7xl px-5 py-10">
 

@@ -10,7 +10,7 @@ import {
   ArrowLeft,
 } from "lucide-react"
 import { useCart } from "../context/CartContext"
-import SiteLogo from "../components/SiteLogo"
+import SiteHeader from "../components/SiteHeader"
 
 export default function CartPage() {
   const {
@@ -25,28 +25,22 @@ export default function CartPage() {
   return (
     <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
 
-      <header className="sticky top-0 z-50 border-b border-black/10 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
+      <SiteHeader />
 
-          <Link href="/" className="flex items-center">
-            <SiteLogo className="h-10 w-auto object-contain" />
+      <div className="border-b border-black/5 bg-white">
+        <div className="mx-auto flex max-w-7xl items-center justify-end gap-5 px-5 py-3">
+          <Link href="/track" className="text-sm text-gray-500 hover:text-black">
+            تتبع طلب
           </Link>
-
-          <div className="flex items-center gap-5">
-            <Link href="/track" className="text-sm text-gray-500 hover:text-black">
-              تتبع طلب
-            </Link>
-            <Link
-              href="/products"
-              className="flex items-center gap-2 text-sm text-gray-600"
-            >
-              <ArrowRight size={18} />
-              متابعة التسوق
-            </Link>
-          </div>
-
+          <Link
+            href="/products"
+            className="flex items-center gap-2 text-sm text-gray-600"
+          >
+            <ArrowRight size={18} />
+            متابعة التسوق
+          </Link>
         </div>
-      </header>
+      </div>
 
       <section className="mx-auto max-w-7xl px-5 py-10">
 

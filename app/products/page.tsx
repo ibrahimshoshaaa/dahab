@@ -2,12 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { Search, SlidersHorizontal, ShoppingBag, Heart, Menu, X } from "lucide-react"
+import { Search, SlidersHorizontal, Heart } from "lucide-react"
 import { products as mockProducts, type Product } from "../data/products"
 import { fetchProducts } from "../lib/api"
-import { useCart } from "../context/CartContext"
 import { useFavorites } from "../context/FavoritesContext"
-import SiteLogo from "../components/SiteLogo"
+import SiteHeader from "../components/SiteHeader"
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>(mockProducts)
@@ -15,9 +14,7 @@ export default function ProductsPage() {
   const [search, setSearch] = useState("")
   const [category, setCategory] = useState("الكل")
   const [sort, setSort] = useState("default")
-  const { cartCount, mounted } = useCart()
-  const { toggleFavorite, isFavorite, favoritesCount, mounted: favoritesMounted } = useFavorites()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { toggleFavorite, isFavorite } = useFavorites()
 
   useEffect(() => {
     fetchProducts()
@@ -58,101 +55,7 @@ export default function ProductsPage() {
 
   return (
     <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
-      <header className="border-b border-black/10 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
-          <Link href="/" className="flex items-center">
-            <SiteLogo className="h-10 w-auto object-contain" />
-          </Link>
-
-          <nav className="hidden gap-8 md:flex">
-            <Link href="/">الرئيسية</Link>
-            <Link href="/products">كل المنتجات</Link>
-            <Link href="/products?category=عبايات">العبايات</Link>
-            <Link href="/products?category=إكسسوارات">الإكسسوارات</Link>
-          </nav>
-
-          <div className="flex items-center gap-5">
-            <button
-              onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden"
-              aria-label="فتح القائمة"
-            >
-              <Menu size={22} />
-            </button>
-
-            <Link href="/favorites" className="relative">
-              <Heart size={21} />
-              {favoritesMounted && favoritesCount > 0 && (
-                <span className="absolute -right-2 -top-2 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--brand-dark)] px-[3px] text-[9px] leading-none text-white">
-                  {favoritesCount}
-                </span>
-              )}
-            </Link>
-
-            <Link href="/cart" className="relative">
-              <ShoppingBag size={22} />
-              {mounted && cartCount > 0 && (
-                <span className="absolute -right-2 -top-2 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-black px-[3px] text-[9px] leading-none text-white">
-                  {cartCount}
-                </span>
-              )}
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      {/* ── Mobile menu drawer ── */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-[60] md:hidden">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setMobileMenuOpen(false)}
-          />
-
-          <div className="absolute inset-y-0 right-0 flex w-72 max-w-[85%] flex-col bg-white px-6 py-6 shadow-xl">
-            <div className="mb-8 flex items-center justify-between">
-              <SiteLogo className="h-9 w-auto object-contain" />
-              <button
-                onClick={() => setMobileMenuOpen(false)}
-                aria-label="إغلاق القائمة"
-              >
-                <X size={22} />
-              </button>
-            </div>
-
-            <nav className="flex flex-col gap-1">
-              <Link
-                href="/"
-                onClick={() => setMobileMenuOpen(false)}
-                className="border-b border-black/5 py-4 text-base"
-              >
-                الرئيسية
-              </Link>
-              <Link
-                href="/products"
-                onClick={() => setMobileMenuOpen(false)}
-                className="border-b border-black/5 py-4 text-base"
-              >
-                كل المنتجات
-              </Link>
-              <Link
-                href="/products?category=عبايات"
-                onClick={() => setMobileMenuOpen(false)}
-                className="border-b border-black/5 py-4 text-base"
-              >
-                العبايات
-              </Link>
-              <Link
-                href="/products?category=إكسسوارات"
-                onClick={() => setMobileMenuOpen(false)}
-                className="border-b border-black/5 py-4 text-base"
-              >
-                الإكسسوارات
-              </Link>
-            </nav>
-          </div>
-        </div>
-      )}
+      <SiteHeader />
 
       <section className="mx-auto max-w-7xl px-5 py-14">
         <div className="mb-10 text-center">

@@ -3,14 +3,13 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import {
-  ArrowRight,
   RotateCcw,
   CheckCircle2,
   XCircle,
   MessageCircle,
 } from "lucide-react"
 import { fetchSettings, type SiteSettings } from "../lib/api"
-import SiteLogo from "../components/SiteLogo"
+import SiteHeader from "../components/SiteHeader"
 
 const DEFAULT_SETTINGS: SiteSettings = {
   returns_period_days: "14",
@@ -57,21 +56,7 @@ export default function ReturnsPage() {
 
   return (
     <main dir="rtl" className="min-h-screen bg-[var(--bg)] text-[var(--ink)]">
-      <header className="border-b border-black/10 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
-          <Link href="/" className="flex items-center">
-            <SiteLogo className="h-10 w-auto object-contain" />
-          </Link>
-
-          <Link
-            href="/"
-            className="flex items-center gap-2 text-sm text-gray-600"
-          >
-            <ArrowRight size={18} />
-            الرئيسية
-          </Link>
-        </div>
-      </header>
+      <SiteHeader />
 
       <section className="mx-auto max-w-4xl px-5 py-16">
         <div className="mb-14 text-center">
