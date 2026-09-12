@@ -448,7 +448,7 @@ export default function ProductDetails({
 
             {/* جدول المقاسات */}
 
-            {product.sizeChart && product.sizeChart.columns.length > 0 && product.sizeChart.rows.length > 0 && (
+            {product.sizeChart && (product.sizeChart.columns?.length ?? 0) > 0 && (product.sizeChart.rows?.length ?? 0) > 0 && (
               <div className="mt-8 border-t pt-6">
                 <h3 className="mb-3 font-semibold">جدول المقاسات</h3>
                 <div className="overflow-x-auto rounded-xl border border-black/10">

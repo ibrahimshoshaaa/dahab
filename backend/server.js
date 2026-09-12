@@ -53,13 +53,19 @@ function safeJsonParse(value, fallback) {
 }
 
 function parseProduct(row) {
+  const sizeChart = safeJsonParse(row.size_chart, null)
+  const normalizedSizeChart =
+    sizeChart && Array.isArray(sizeChart.columns) && Array.isArray(sizeChart.rows)
+      ? sizeChart
+      : null
+
   return {
     ...row,
     oldPrice: row.old_price,
     colors: safeJsonParse(row.colors, []),
     sizes: safeJsonParse(row.sizes, []),
     images: safeJsonParse(row.images, []),
-    sizeChart: safeJsonParse(row.size_chart, null),
+    sizeChart: normalizedSizeChart,
     materialDetails: row.material_details || "",
     careInstructions: row.care_instructions || "",
     featured: !!row.featured,
