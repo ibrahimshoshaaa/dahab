@@ -8,7 +8,7 @@ import { useFavorites } from "../context/FavoritesContext"
 import { fetchSettings } from "../lib/api"
 import SiteLogo from "./SiteLogo"
 
-const DEFAULT_ANNOUNCEMENT = "✦ شحن لجميع المحافظات | الدفع عند الاستلام متاح"
+const DEFAULT_ANNOUNCEMENT = ""
 
 const NAV_LINKS: [string, string][] = [
   ["/", "الرئيسية"],
@@ -34,9 +34,11 @@ export default function SiteHeader() {
 
   return (
     <>
-      <div className="bg-[var(--ink)] py-2 text-center text-xs text-[var(--brand-soft)]">
-        {announcement}
-      </div>
+      {announcement && (
+        <div className="bg-white py-2 text-center text-xs text-[var(--ink)]">
+          {announcement}
+        </div>
+      )}
 
       <header className="sticky top-0 z-50 border-b border-black/5 bg-[var(--bg)]/95 backdrop-blur-xl">
         <div className="mx-auto grid h-20 max-w-7xl grid-cols-3 items-center px-5">
