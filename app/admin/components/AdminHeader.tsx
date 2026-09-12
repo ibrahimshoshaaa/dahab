@@ -10,6 +10,7 @@ const navItems = [
   { href: "/admin/orders", label: "الطلبات" },
   { href: "/admin/products", label: "المنتجات" },
   { href: "/admin/inventory", label: "المخزون" },
+  { href: "/admin/customers", label: "العملاء" },
   { href: "/admin/homepage", label: "الصفحة الرئيسية" },
   { href: "/admin/pages", label: "الصفحات الثابتة" },
   { href: "/admin/theme", label: "الشكل العام" },

@@ -200,6 +200,30 @@ export async function updateProductStock(id: number, stock: number) {
   })
 }
 
+// ---------- admin customers ----------
+
+export type AdminCustomer = {
+  customer_name: string
+  phone: string
+  governorate: string
+  area: string
+  address: string
+  orders_count: number
+  total_spent: number
+  last_order_at: string
+  first_order_at: string
+}
+
+export async function fetchAdminCustomers() {
+  const data = await adminFetch("/api/admin/customers")
+  return data.customers as AdminCustomer[]
+}
+
+export async function fetchCustomerOrders(phone: string) {
+  const data = await adminFetch(`/api/admin/customers/${encodeURIComponent(phone)}/orders`)
+  return data.orders as Record<string, unknown>[]
+}
+
 // ---------- settings ----------
 
 export type SiteSettings = Record<string, string>

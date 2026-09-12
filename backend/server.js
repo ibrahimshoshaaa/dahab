@@ -338,6 +338,75 @@ app.patch("/api/orders/:id/status", requireAdmin, async (req, res) => {
   }
 })
 
+// ---------- admin customers ----------
+
+app.get("/api/admin/customers", requireAdmin, async (req, res) => {
+  try {
+    const result = await db.execute("SELECT * FROM orders ORDER BY id DESC")
+    const map = new Map()
+
+    for (const order of result.rows) {
+      const phone = String(order.phone || "").trim()
+      if (!phone) continue
+      const existing = map.get(phone)
+      if (!existing) {
+        map.set(phone, {
+          customer_name: order.customer_name,
+          phone,
+          governorate: order.governorate,
+          area: order.area,
+          address: order.address,
+          orders_count: 1,
+          total_spent: order.status === "ملغي" ? 0 : Number(order.total || 0),
+          last_order_at: order.created_at,
+          first_order_at: order.created_at,
+        })
+      } else {
+        existing.orders_count += 1
+        if (order.status !== "ملغي") existing.total_spent += Number(order.total || 0)
+        if (new Date(order.created_at).getTime() < new Date(existing.first_order_at).getTime()) {
+          existing.first_order_at = order.created_at
+        }
+      }
+    }
+
+    const customers = Array.from(map.values()).sort(
+      (a, b) => new Date(b.last_order_at).getTime() - new Date(a.last_order_at).getTime()
+    )
+    res.json({ success: true, customers })
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ success: false, message: "حدث خطأ في جلب العملاء" })
+  }
+})
+
+app.get("/api/admin/customers/:phone/orders", requireAdmin, async (req, res) => {
+  try {
+    const phone = String(req.params.phone || "").trim()
+    if (!phone) return res.status(400).json({ success: false, message: "رقم الهاتف غير صحيح" })
+
+    const result = await db.execute({
+      sql: "SELECT * FROM orders WHERE phone = ? ORDER BY id DESC",
+      args: [phone],
+    })
+
+    const orders = await Promise.all(
+      result.rows.map(async (order) => {
+        const items = await db.execute({
+          sql: "SELECT * FROM order_items WHERE order_id = ?",
+          args: [order.id],
+        })
+        return { ...order, items: items.rows }
+      })
+    )
+
+    res.json({ success: true, orders })
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ success: false, message: "حدث خطأ في جلب طلبات العميل" })
+  }
+})
+
 // ---------- contact messages ----------
 
 app.post("/api/contact", async (req, res) => {
