@@ -97,6 +97,11 @@ async function initDb() {
     }
   }
 
+  // migrate: rename old إكسسوارات categories to حقائب / طرح
+  await db.execute(`UPDATE products SET category = 'حقائب' WHERE category = 'إكسسوارات' AND slug = 'dahab-bag'`)
+  await db.execute(`UPDATE products SET category = 'طرح' WHERE category = 'إكسسوارات' AND slug = 'dahab-scarf'`)
+  await db.execute(`DELETE FROM products WHERE slug = 'gold-accessory'`)
+
   // seed products
   const productCount = await db.execute("SELECT COUNT(*) AS count FROM products")
   if (productCount.rows[0].count === 0) {
@@ -146,7 +151,7 @@ async function initDb() {
       {
         slug: "dahab-bag",
         name: "شنطة دهب",
-        category: "إكسسوارات",
+        category: "حقائب",
         price: 799,
         old_price: null,
         image: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=900",
@@ -160,7 +165,7 @@ async function initDb() {
       {
         slug: "dahab-scarf",
         name: "طرحة دهب",
-        category: "إكسسوارات",
+        category: "طرح",
         price: 299,
         old_price: null,
         image: "https://images.unsplash.com/photo-1601924994987-69e26d50dc26?w=900",
@@ -185,20 +190,7 @@ async function initDb() {
         featured: 0,
         best_seller: 1,
       },
-      {
-        slug: "gold-accessory",
-        name: "إكسسوار دهب",
-        category: "إكسسوارات",
-        price: 399,
-        old_price: null,
-        image: "https://images.unsplash.com/photo-1611652022419-a9419f74343d?w=900",
-        badge: "جديد",
-        colors: '["ذهبي","فضي"]',
-        sizes: '[]',
-        description: "لمسة بسيطة تضيف أناقة مميزة لإطلالتك.",
-        featured: 0,
-        best_seller: 0,
-      },
+
       {
         slug: "abaya-elite",
         name: "عباية إيليت",
