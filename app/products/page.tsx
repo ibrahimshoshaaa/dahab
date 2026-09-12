@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Search, SlidersHorizontal, Heart } from "lucide-react"
@@ -9,7 +9,7 @@ import { fetchProducts } from "../lib/api"
 import { useFavorites } from "../context/FavoritesContext"
 import SiteHeader from "../components/SiteHeader"
 
-export default function ProductsPage() {
+function ProductsContent() {
   const searchParams = useSearchParams()
   const urlCategory = searchParams.get("category")
   const initialCategory = urlCategory ?? "الكل"
@@ -184,5 +184,13 @@ export default function ProductsPage() {
         )}
       </section>
     </main>
+  )
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense>
+      <ProductsContent />
+    </Suspense>
   )
 }
