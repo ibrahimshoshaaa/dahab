@@ -55,10 +55,8 @@ export default function Home() {
   }, [])
 
   const accessoryItems = [
-    [s(settings, "accessories_item1_title"), s(settings, "accessories_item1_image")],
-    [s(settings, "accessories_item2_title"), s(settings, "accessories_item2_image")],
-    [s(settings, "accessories_item3_title"), s(settings, "accessories_item3_image")],
-    [s(settings, "accessories_item4_title"), s(settings, "accessories_item4_image")],
+    [s(settings, "accessories_item1_title"), s(settings, "accessories_item1_image"), "/products?category=bags"],
+    [s(settings, "accessories_item3_title"), s(settings, "accessories_item3_image"), "/products?category=scarves"],
   ]
 
   if (!isLoaded) {
@@ -226,40 +224,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Story ── */}
-      <section className="bg-[var(--ink)] text-white">
-
-        <div className="mx-auto grid max-w-7xl lg:grid-cols-2">
-
-          <div className="flex items-center px-7 py-20 lg:px-16">
-            <div>
-              <p className="mb-5 text-[11px] tracking-[0.3em] text-[var(--brand-mid)]">
-                THE DAHAB STORY
-              </p>
-              <h2 className="text-4xl font-light leading-tight sm:text-5xl">
-                {s(settings, "story_title_line1")}
-                <br />
-                <span className="font-serif italic text-[var(--brand-mid)]">
-                  {s(settings, "story_title_line2")}
-                </span>
-              </h2>
-              <p className="mt-7 max-w-lg text-sm leading-8 text-white/60">
-                {s(settings, "story_body")}
-              </p>
-            </div>
-          </div>
-
-          <div className="min-h-[500px]">
-            <img
-              src={s(settings, "story_image")}
-              className="h-full w-full object-cover"
-              alt="Dahab"
-            />
-          </div>
-
-        </div>
-      </section>
-
       {/* ── Accessories ── */}
       <section id="accessories" className="mx-auto max-w-7xl px-5 py-20">
 
@@ -272,9 +236,9 @@ export default function Home() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {accessoryItems.map(([title, image]) => (
-            <a key={title} href="#" className="group relative aspect-square overflow-hidden">
+        <div className="grid grid-cols-2 gap-4">
+          {accessoryItems.map(([title, image, href]) => (
+            <Link key={title} href={href} className="group relative aspect-square overflow-hidden">
               <img
                 src={image}
                 alt={title}
@@ -282,7 +246,7 @@ export default function Home() {
               />
               <div className="absolute inset-0 bg-black/25" />
               <h3 className="absolute bottom-5 right-5 text-xl text-white">{title}</h3>
-            </a>
+            </Link>
           ))}
         </div>
       </section>
