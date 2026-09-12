@@ -126,7 +126,7 @@ export default function AdminPagesEditor() {
             DAHAB <span className="text-sm text-gray-400">ADMIN</span>
           </div>
           <nav className="flex items-center gap-6 text-sm">
-            <Link href="/admin" className="text-gray-500">الطلبات</Link>
+            <Link href="/admin/orders" className="text-gray-500">الطلبات</Link>
             <Link href="/admin/products" className="text-gray-500">المنتجات</Link>
             <Link href="/admin/homepage" className="text-gray-500">الصفحة الرئيسية</Link>
             <Link href="/admin/pages" className="font-medium">الصفحات الثابتة</Link>

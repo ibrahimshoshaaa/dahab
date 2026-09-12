@@ -18,7 +18,7 @@ export default function AdminLoginPage() {
 
     try {
       await adminLogin(username, password)
-      router.push("/admin")
+      router.push("/admin/orders")
     } catch (err) {
       setError(err instanceof Error ? err.message : "بيانات الدخول غير صحيحة")
     } finally {
