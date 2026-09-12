@@ -268,7 +268,7 @@ export default function AdminProductsPage() {
 
     const payload = {
       name: form.name,
-      category: form.category as "عبايات" | "حقائب" | "طرح",
+      category: form.category as "عبايات" | "إكسسوارات",
       price: Number(form.price),
       oldPrice: form.oldPrice ? Number(form.oldPrice) : undefined,
       image: images[0],
@@ -428,8 +428,7 @@ export default function AdminProductsPage() {
                 className="w-full rounded-xl border border-black/10 px-4 py-2.5 text-sm outline-none"
               >
                 <option value="عبايات">عبايات</option>
-                <option value="حقائب">حقائب</option>
-                <option value="طرح">طرح</option>
+                <option value="إكسسوارات">إكسسوارات</option>
               </select>
 
               <div className="grid grid-cols-2 gap-3">

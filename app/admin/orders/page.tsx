@@ -10,6 +10,15 @@ import {
 } from "../../lib/api"
 import AdminHeader from "../components/AdminHeader"
 
+type OrderItem = {
+  id: number
+  product_name: string
+  price: number
+  quantity: number
+  selected_color?: string
+  selected_size?: string
+}
+
 type Order = {
   id: number
   customer_name: string
@@ -21,6 +30,7 @@ type Order = {
   total: number
   status: string
   created_at: string
+  items: OrderItem[]
 }
 
 const statuses = [
@@ -155,6 +165,22 @@ export default function AdminDashboard() {
                     {order.address}
                     {order.notes ? ` — ملاحظات: ${order.notes}` : ""}
                   </p>
+
+                  {order.items?.length > 0 && (
+                    <div className="mt-3 space-y-1 border-t border-black/5 pt-3">
+                      {order.items.map((item) => (
+                        <div key={item.id} className="flex items-center justify-between text-sm">
+                          <span className="text-gray-700">
+                            {item.product_name}
+                            {item.selected_color ? ` · ${item.selected_color}` : ""}
+                            {item.selected_size ? ` · ${item.selected_size}` : ""}
+                            {" ×"}{item.quantity}
+                          </span>
+                          <span className="text-gray-500">{(item.price * item.quantity).toLocaleString("ar-EG")} ج</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-3">

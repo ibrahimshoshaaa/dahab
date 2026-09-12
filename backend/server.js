@@ -217,7 +217,14 @@ app.delete("/api/admin/products/:id", requireAdmin, async (req, res) => {
 app.get("/api/orders", requireAdmin, async (req, res) => {
   try {
     const result = await db.execute("SELECT * FROM orders ORDER BY id DESC")
-    res.json({ success: true, orders: result.rows })
+    const orders = result.rows
+    const ordersWithItems = await Promise.all(
+      orders.map(async (order) => {
+        const items = await db.execute({ sql: "SELECT * FROM order_items WHERE order_id = ?", args: [order.id] })
+        return { ...order, items: items.rows }
+      })
+    )
+    res.json({ success: true, orders: ordersWithItems })
   } catch (error) {
     console.error(error)
     res.status(500).json({ success: false, message: "حدث خطأ في جلب الطلبات" })

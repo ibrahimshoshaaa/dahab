@@ -98,8 +98,7 @@ function ProductsContent() {
             >
               <option value="الكل">كل الأقسام</option>
               <option value="عبايات">العبايات</option>
-              <option value="حقائب">الحقائب</option>
-              <option value="طرح">الطرح</option>
+              <option value="إكسسوارات">الإكسسوارات</option>
             </select>
           </div>
 

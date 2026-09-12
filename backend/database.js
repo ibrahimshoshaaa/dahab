@@ -97,11 +97,6 @@ async function initDb() {
     }
   }
 
-  // migrate: rename old إكسسوارات categories to حقائب / طرح
-  await db.execute(`UPDATE products SET category = 'حقائب' WHERE category = 'إكسسوارات' AND slug = 'dahab-bag'`)
-  await db.execute(`UPDATE products SET category = 'طرح' WHERE category = 'إكسسوارات' AND slug = 'dahab-scarf'`)
-  await db.execute(`DELETE FROM products WHERE slug = 'gold-accessory'`)
-
   // seed products
   const productCount = await db.execute("SELECT COUNT(*) AS count FROM products")
   if (productCount.rows[0].count === 0) {

@@ -7,7 +7,7 @@ export type Product = {
   id: number
   slug: string
   name: string
-  category: "عبايات" | "حقائب" | "طرح"
+  category: "عبايات" | "إكسسوارات"
   price: number
   oldPrice?: number
   image: string
@@ -70,7 +70,7 @@ export const products: Product[] = [
     id: 4,
     slug: "dahab-bag",
     name: "شنطة دهب",
-    category: "حقائب",
+    category: "إكسسوارات",
     price: 799,
     image: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=900",
     badge: "جديد",
@@ -83,7 +83,7 @@ export const products: Product[] = [
     id: 5,
     slug: "dahab-scarf",
     name: "طرحة دهب",
-    category: "طرح",
+    category: "إكسسوارات",
     price: 299,
     image: "https://images.unsplash.com/photo-1601924994987-69e26d50dc26?w=900",
     colors: ["بيج", "أسود", "أوف وايت"],
@@ -102,7 +102,6 @@ export const products: Product[] = [
     description: "ستايل كلاسيكي مناسب لكل يوم.",
     bestSeller: true,
   },
-
   {
     id: 8,
     slug: "abaya-elite",

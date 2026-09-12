@@ -55,8 +55,8 @@ export default function Home() {
   }, [])
 
   const accessoryItems = [
-    [s(settings, "accessories_item1_title"), s(settings, "accessories_item1_image"), "/products?category=حقائب"],
-    [s(settings, "accessories_item3_title"), s(settings, "accessories_item3_image"), "/products?category=طرح"],
+    [s(settings, "accessories_item1_title"), s(settings, "accessories_item1_image"), "/products?category=إكسسوارات"],
+    [s(settings, "accessories_item3_title"), s(settings, "accessories_item3_image"), "/products?category=إكسسوارات"],
   ]
 
   if (!isLoaded) {
