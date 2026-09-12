@@ -22,27 +22,18 @@ const FIELD_LABELS: Record<string, string> = {
   hero_button_text:            "Hero — نص الزر",
   collection_abaya_image:      "قسم المجموعات — صورة العبايات",
   collection_accessories_image:"قسم المجموعات — صورة الإكسسوارات",
-  story_title_line1:           "Story — السطر الأول",
-  story_title_line2:           "Story — السطر الثاني (ذهبي مائل)",
-  story_body:                  "Story — النص",
-  story_image:                 "Story — الصورة",
-  accessories_item1_title:     "إكسسوارات — العنصر 1 (اسم)",
-  accessories_item1_image:     "إكسسوارات — العنصر 1 (صورة)",
-  accessories_item2_title:     "إكسسوارات — العنصر 2 (اسم)",
-  accessories_item2_image:     "إكسسوارات — العنصر 2 (صورة)",
-  accessories_item3_title:     "إكسسوارات — العنصر 3 (اسم)",
-  accessories_item3_image:     "إكسسوارات — العنصر 3 (صورة)",
-  accessories_item4_title:     "إكسسوارات — العنصر 4 (اسم)",
-  accessories_item4_image:     "إكسسوارات — العنصر 4 (صورة)",
+  accessories_item1_title:     "كمّلي إطلالتك — حقائب (اسم)",
+  accessories_item1_image:     "كمّلي إطلالتك — حقائب (صورة)",
+  accessories_item3_title:     "كمّلي إطلالتك — طرح (اسم)",
+  accessories_item3_image:     "كمّلي إطلالتك — طرح (صورة)",
   footer_description:          "الفوتر — نص الوصف",
 }
 
-const TEXTAREA_KEYS = new Set(["hero_subtitle", "story_body", "announcement_bar"])
+const TEXTAREA_KEYS = new Set(["hero_subtitle", "announcement_bar"])
 const IMAGE_KEYS = new Set([
-  "hero_image", "story_image",
+  "hero_image",
   "collection_abaya_image", "collection_accessories_image",
-  "accessories_item1_image", "accessories_item2_image",
-  "accessories_item3_image", "accessories_item4_image",
+  "accessories_item1_image", "accessories_item3_image",
 ])
 
 const FIELD_ORDER = Object.keys(FIELD_LABELS)
