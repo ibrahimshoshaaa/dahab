@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import { Menu, X } from "lucide-react"
 
 const navItems = [
+  { href: "/admin", label: "الرئيسية" },
   { href: "/admin/orders", label: "الطلبات" },
   { href: "/admin/products", label: "المنتجات" },
   { href: "/admin/homepage", label: "الصفحة الرئيسية" },
