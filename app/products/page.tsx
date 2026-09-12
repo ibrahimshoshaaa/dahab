@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Search, SlidersHorizontal, Heart } from "lucide-react"
 import { products as mockProducts, type Product } from "../data/products"
@@ -9,10 +10,14 @@ import { useFavorites } from "../context/FavoritesContext"
 import SiteHeader from "../components/SiteHeader"
 
 export default function ProductsPage() {
+  const searchParams = useSearchParams()
+  const urlCategory = searchParams.get("category")
+  const initialCategory = urlCategory ?? "الكل"
+
   const [products, setProducts] = useState<Product[]>(mockProducts)
   const [isLoaded, setIsLoaded] = useState(false)
   const [search, setSearch] = useState("")
-  const [category, setCategory] = useState("الكل")
+  const [category, setCategory] = useState(initialCategory)
   const [sort, setSort] = useState("default")
   const { toggleFavorite, isFavorite } = useFavorites()
 
@@ -93,7 +98,8 @@ export default function ProductsPage() {
             >
               <option value="الكل">كل الأقسام</option>
               <option value="عبايات">العبايات</option>
-              <option value="إكسسوارات">الإكسسوارات</option>
+              <option value="حقائب">الحقائب</option>
+              <option value="طرح">الطرح</option>
             </select>
           </div>
 
