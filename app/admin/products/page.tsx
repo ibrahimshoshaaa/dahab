@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Pencil, Trash2, Plus, X, Check, ChevronLeft, ChevronRight, Image as ImageIcon, Package, Tags, FileText } from "lucide-react"
+import { Pencil, Trash2, Plus, X, Check, ChevronLeft, ChevronRight, Image as ImageIcon, Package, Tags, FileText, type LucideIcon } from "lucide-react"
 import {
   getAdminToken,
   adminLogout,
@@ -428,7 +428,15 @@ export default function AdminProductsPage() {
         <form onSubmit={handleSave} dir="rtl" className="flex h-full w-full flex-col bg-white sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-3xl">
           <div className="shrink-0 border-b border-black/10 px-5 pb-4 pt-5 sm:px-6">
             <div className="flex items-start justify-between gap-3"><div><p className="text-xs text-gray-400">{form.id?"تعديل منتج":"منتج جديد"}</p><h2 className="mt-1 text-xl font-semibold">{form.id?form.name||"تعديل المنتج":"إضافة منتج جديد"}</h2></div><button type="button" onClick={()=>setShowForm(false)} className="flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-gray-500"><X size={18}/></button></div>
-            <div className="mt-5 grid grid-cols-4 gap-1.5">{[[1,"البيانات",Package],[2,"الصور",ImageIcon],[3,"المخزون",Tags],[4,"التفاصيل",FileText]].map(([number,label,Icon])=>{const n=number as number;const I=Icon as typeof Package;const done=step>n;return <button key={n} type="button" onClick={()=>n<step&&setStep(n)} className={`rounded-xl px-1 py-2 text-center text-[10px] sm:text-xs ${step===n?"bg-black text-white":done?"bg-gray-100 text-black":"bg-gray-50 text-gray-400"}`}><span className="mx-auto mb-1 flex h-6 w-6 items-center justify-center rounded-full border border-current">{done?<Check size={12}/>:<I size={12}/>}</span>{label}</button>})}</div>
+            <div className="mt-5 grid grid-cols-4 gap-1.5">{([
+              { number: 1, label: "البيانات", Icon: Package },
+              { number: 2, label: "الصور", Icon: ImageIcon },
+              { number: 3, label: "المخزون", Icon: Tags },
+              { number: 4, label: "التفاصيل", Icon: FileText },
+            ] as { number: number; label: string; Icon: LucideIcon }[]).map(({ number, label, Icon }) => {
+              const done = step > number
+              return <button key={number} type="button" onClick={() => number < step && setStep(number)} className={`rounded-xl px-1 py-2 text-center text-[10px] sm:text-xs ${step === number ? "bg-black text-white" : done ? "bg-gray-100 text-black" : "bg-gray-50 text-gray-400"}`}><span className="mx-auto mb-1 flex h-6 w-6 items-center justify-center rounded-full border border-current">{done ? <Check size={12} /> : <Icon size={12} />}</span>{label}</button>
+            })}</div>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
