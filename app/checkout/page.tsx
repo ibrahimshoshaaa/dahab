@@ -254,7 +254,7 @@ export default function CheckoutPage() {
             )}
 
             {trackingCode && (
-              <a href={whatsappUrl("201000000000", `مرحبًا دهب، أريد الاستفسار عن الطلب ${trackingCode}`)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 rounded-full border border-green-200 bg-green-50 px-8 py-4 text-sm text-green-700">
+              <a href={whatsappUrl("201025269977", `مرحبًا دهب، أريد الاستفسار عن الطلب ${trackingCode}`)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 rounded-full border border-green-200 bg-green-50 px-8 py-4 text-sm text-green-700">
                 تواصل عبر واتساب
               </a>
             )}
