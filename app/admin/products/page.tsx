@@ -425,7 +425,19 @@ export default function AdminProductsPage() {
       </section>
 
       {showForm && <div className="fixed inset-0 z-50 bg-black/45 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
-        <form onSubmit={handleSave} dir="rtl" className="flex h-full w-full flex-col bg-white sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-3xl">
+        <form
+          onSubmit={handleSave}
+          onKeyDown={(e) => {
+            // منع الإرسال التلقائي للفورم عند الضغط على Enter داخل أي input/select.
+            // الحفظ يتم فقط من زر "حفظ المنتج" في الخطوة الرابعة.
+            const target = e.target as HTMLElement
+            if (e.key === "Enter" && (target.tagName === "INPUT" || target.tagName === "SELECT")) {
+              e.preventDefault()
+            }
+          }}
+          dir="rtl"
+          className="flex h-full w-full flex-col bg-white sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-3xl"
+        >
           <div className="shrink-0 border-b border-black/10 px-5 pb-4 pt-5 sm:px-6">
             <div className="flex items-start justify-between gap-3"><div><p className="text-xs text-gray-400">{form.id?"تعديل منتج":"منتج جديد"}</p><h2 className="mt-1 text-xl font-semibold">{form.id?form.name||"تعديل المنتج":"إضافة منتج جديد"}</h2></div><button type="button" onClick={()=>setShowForm(false)} className="flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-gray-500"><X size={18}/></button></div>
             <div className="mt-5 grid grid-cols-4 gap-1.5">{([
@@ -444,7 +456,196 @@ export default function AdminProductsPage() {
 
             {step===2 && <div className="space-y-4"><div className="rounded-2xl bg-neutral-50 p-4"><p className="text-sm font-semibold">صور المنتج</p><p className="mt-1 text-xs leading-5 text-gray-500">الصورة الأولى هي الرئيسية. أضيفي صورة واحدة على الأقل، ويمكنك إضافة حتى {MAX_IMAGES} صور.</p></div><div className="grid gap-3 sm:grid-cols-2">{form.images.map((img,index)=><ProductImageSlot key={index} index={index} value={img} onChange={setImageAt}/>)}</div></div>}
 
-            {step===3 && (()=>{const colors=listFromText(form.colors),sizes=listFromText(form.sizes);const has=colors.length||sizes.length;const dc=colors.length?colors:["-"];const ds=sizes.length?sizes:["-"];const total=Object.values(form.variantStock).reduce<number>((sum,value)=>sum+Math.max(0,Number(value||0)),0);return <div className="space-y-5"><div className="rounded-2xl bg-neutral-50 p-4"><p className="text-base font-semibold">الألوان والمقاسات والمخزون</p><p className="mt-1 text-xs leading-5 text-gray-500">ضيفي كل لون أو مقاس واضغطي Enter. جدول المخزون بيتكوّن تلقائيًا، من غير زر إضافي.</p></div><div><label className="mb-2 block text-sm font-medium">الألوان</label><div className="flex min-h-12 flex-wrap items-center gap-2 rounded-xl border border-black/10 px-3 py-2 focus-within:border-black">{colors.map(c=><span key={c} className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1.5 text-xs">{c}<button type="button" onClick={()=>removeVariant("color",c)} className="text-gray-400 hover:text-red-500"><X size={13}/></button></span>)}<input value={colorInput} onChange={e=>setColorInput(e.target.value.replace(/,/g,""))} onKeyDown={e=>{if(e.key==="Enter"||e.key===","){e.preventDefault();addVariant("color")}if(e.key==="Backspace"&&!colorInput&&colors.length)removeVariant("color",colors[colors.length-1])}} placeholder={colors.length?"إضافة لون...":"اكتبي لون واضغطي Enter"} className="min-w-[130px] flex-1 border-0 bg-transparent px-1 py-1.5 text-sm outline-none"/></div></div><div><label className="mb-2 block text-sm font-medium">المقاسات</label><div className="flex min-h-12 flex-wrap items-center gap-2 rounded-xl border border-black/10 px-3 py-2 focus-within:border-black">{sizes.map(z=><span key={z} className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1.5 text-xs">{z}<button type="button" onClick={()=>removeVariant("size",z)} className="text-gray-400 hover:text-red-500"><X size={13}/></button></span>)}<input value={sizeInput} onChange={e=>setSizeInput(e.target.value.replace(/,/g,""))} onKeyDown={e=>{if(e.key==="Enter"||e.key===","){e.preventDefault();addVariant("size")}if(e.key==="Backspace"&&!sizeInput&&sizes.length)removeVariant("size",sizes[sizes.length-1])}} placeholder={sizes.length?"إضافة مقاس...":"اكتبي مقاس واضغطي Enter"} className="min-w-[130px] flex-1 border-0 bg-transparent px-1 py-1.5 text-sm outline-none"/></div></div>{!has?<div className="rounded-2xl border border-black/10 p-4"><label className="mb-1.5 block text-sm font-medium">الكمية المتاحة</label><input required min="0" type="number" value={form.stock} onChange={e=>setForm({...form,stock:e.target.value})} className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none"/></div>:<div className="rounded-2xl border border-black/10 p-4"><div className="mb-4 flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">مخزون كل تركيبة</p><p className="mt-1 text-xs text-gray-500">اكتبي الكمية أمام كل لون × مقاس.</p></div><span className="shrink-0 rounded-full bg-black px-3 py-1.5 text-xs text-white">{total} قطعة</span></div><div className="overflow-x-auto rounded-xl border border-black/10"><table className="w-full min-w-[380px] border-collapse text-sm"><thead><tr className="bg-neutral-50"><th className="border-b border-l border-black/10 px-3 py-3 text-right">اللون / المقاس</th>{ds.map(z=><th key={z} className="border-b border-l border-black/10 px-3 py-3 text-center">{z==="-"?"موحد":z}</th>)}</tr></thead><tbody>{dc.map(c=><tr key={c}><th className="border-b border-l border-black/10 px-3 py-3 text-right font-medium">{c==="-"?"موحد":c}</th>{ds.map(z=>{const key=`${c}|${z}`,value=Number(form.variantStock[key]??0);return <td key={key} className="border-b border-black/10 p-2"><input type="number" min="0" value={value} onChange={e=>setForm({...form,variantStock:{...form.variantStock,[key]:Math.max(0,Number(e.target.value||0))}})} className={`w-full rounded-lg border px-3 py-2.5 text-center font-semibold outline-none ${value===0?"border-red-200 bg-red-50":"border-black/10"}`}/>{value===0&&<span className="mt-1 block text-center text-[10px] text-red-500">نفد</span>}</td>})}</tr>)}</tbody></table></div><div className="mt-4 flex items-center gap-3"><label className="text-xs text-gray-500">تنبيه عند وصول الإجمالي إلى</label><input min="0" type="number" value={form.lowStockThreshold} onChange={e=>setForm({...form,lowStockThreshold:e.target.value})} className="w-24 rounded-xl border border-black/10 px-3 py-2 text-sm outline-none"/></div></div>}</div>})()}
+            {step === 3 && (() => {
+              const colors = listFromText(form.colors)
+              const sizes = listFromText(form.sizes)
+              const hasVariants = colors.length > 0 || sizes.length > 0
+              const displayColors = colors.length ? colors : ["-"]
+              const displaySizes = sizes.length ? sizes : ["-"]
+              const total = Object.values(form.variantStock).reduce<number>(
+                (sum, value) => sum + Math.max(0, Number(value || 0)),
+                0,
+              )
+
+              return (
+                <div className="space-y-5">
+                  <div className="rounded-2xl border border-black/5 bg-neutral-50 p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black text-white">
+                        <Package size={17} />
+                      </div>
+                      <div>
+                        <p className="text-base font-semibold">الألوان والمقاسات والقطع</p>
+                        <p className="mt-1 text-xs leading-5 text-gray-500">
+                          أضيفي الألوان والمقاسات أولًا. بعدها سيظهر جدول تلقائيًا، واكتبي عدد القطع الموجودة في كل اختيار.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">الألوان <span className="font-normal text-gray-400">اختياري</span></label>
+                    <div className="flex min-h-12 flex-wrap items-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 focus-within:border-black">
+                      {colors.map((color) => (
+                        <span key={color} className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1.5 text-xs">
+                          {color}
+                          <button type="button" onClick={() => removeVariant("color", color)} className="text-gray-400 hover:text-red-500" aria-label={`حذف لون ${color}`}>
+                            <X size={13} />
+                          </button>
+                        </span>
+                      ))}
+                      <input
+                        value={colorInput}
+                        onChange={(e) => setColorInput(e.target.value.replace(/,/g, ""))}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === ",") {
+                            e.preventDefault()
+                            addVariant("color")
+                          }
+                          if (e.key === "Backspace" && !colorInput && colors.length) removeVariant("color", colors[colors.length - 1])
+                        }}
+                        placeholder={colors.length ? "إضافة لون..." : "مثال: أسود ثم Enter"}
+                        className="min-w-[150px] flex-1 border-0 bg-transparent px-1 py-1.5 text-sm outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">المقاسات <span className="font-normal text-gray-400">اختياري</span></label>
+                    <div className="flex min-h-12 flex-wrap items-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 focus-within:border-black">
+                      {sizes.map((size) => (
+                        <span key={size} className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1.5 text-xs">
+                          {size}
+                          <button type="button" onClick={() => removeVariant("size", size)} className="text-gray-400 hover:text-red-500" aria-label={`حذف مقاس ${size}`}>
+                            <X size={13} />
+                          </button>
+                        </span>
+                      ))}
+                      <input
+                        value={sizeInput}
+                        onChange={(e) => setSizeInput(e.target.value.replace(/,/g, ""))}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === ",") {
+                            e.preventDefault()
+                            addVariant("size")
+                          }
+                          if (e.key === "Backspace" && !sizeInput && sizes.length) removeVariant("size", sizes[sizes.length - 1])
+                        }}
+                        placeholder={sizes.length ? "إضافة مقاس..." : "مثال: 1 ثم Enter"}
+                        className="min-w-[150px] flex-1 border-0 bg-transparent px-1 py-1.5 text-sm outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {!hasVariants ? (
+                    <div className="rounded-2xl border border-black/10 bg-white p-4">
+                      <div className="mb-3">
+                        <p className="text-sm font-semibold">مخزون المنتج</p>
+                        <p className="mt-1 text-xs text-gray-500">لو المنتج ليس له ألوان أو مقاسات، اكتبي عدد القطع الإجمالي هنا.</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <input
+                          required
+                          min="0"
+                          type="number"
+                          value={form.stock}
+                          onChange={(e) => setForm({ ...form, stock: e.target.value })}
+                          className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm font-semibold outline-none focus:border-black"
+                          placeholder="مثال: 20"
+                        />
+                        <span className="shrink-0 text-sm text-gray-500">قطعة</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-black/10 bg-white p-4">
+                      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold">عدد القطع لكل اختيار</p>
+                          <p className="mt-1 text-xs leading-5 text-gray-500">
+                            كل خانة تمثل اختيارًا مستقلًا. مثال: أسود + 2 = عدد القطع الموجودة من الأسود مقاس 2.
+                          </p>
+                        </div>
+                        <div className="rounded-full bg-black px-3 py-1.5 text-xs font-medium text-white">
+                          الإجمالي: {total.toLocaleString("ar-EG")} قطعة
+                        </div>
+                      </div>
+
+                      <div className="overflow-x-auto rounded-xl border border-black/10">
+                        <table className="w-full min-w-[300px] border-collapse text-sm">
+                          {colors.length > 0 && sizes.length > 0 ? (
+                            <>
+                              <thead>
+                                <tr className="bg-neutral-50">
+                                  <th className="border-b border-l border-black/10 px-3 py-3 text-right font-medium">اللون / المقاس</th>
+                                  {sizes.map((size) => (
+                                    <th key={size} className="border-b border-l border-black/10 px-3 py-3 text-center font-medium">{size}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {colors.map((color) => (
+                                  <tr key={color}>
+                                    <th className="border-b border-l border-black/10 px-3 py-3 text-right font-medium">{color}</th>
+                                    {sizes.map((size) => {
+                                      const key = `${color}|${size}`
+                                      const value = Number(form.variantStock[key] ?? 0)
+                                      return (
+                                        <td key={key} className="border-b border-black/10 p-2">
+                                          <input
+                                            type="number" min="0" inputMode="numeric" value={value}
+                                            onChange={(e) => setForm({ ...form, variantStock: { ...form.variantStock, [key]: Math.max(0, Number(e.target.value || 0)) } })}
+                                            className={`w-full rounded-lg border px-3 py-2.5 text-center font-semibold outline-none focus:border-black ${value === 0 ? "border-red-200 bg-red-50" : "border-black/10 bg-white"}`}
+                                          />
+                                          {value === 0 && <span className="mt-1 block text-center text-[10px] text-red-500">نفد</span>}
+                                        </td>
+                                      )
+                                    })}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </>
+                          ) : colors.length > 0 ? (
+                            <>
+                              <thead><tr className="bg-neutral-50"><th className="border-b border-l border-black/10 px-3 py-3 text-right font-medium">اللون</th><th className="border-b border-black/10 px-3 py-3 text-center font-medium">عدد القطع</th></tr></thead>
+                              <tbody>{colors.map((color) => {
+                                const key = `${color}|-`
+                                const value = Number(form.variantStock[key] ?? 0)
+                                return <tr key={color}><th className="border-b border-l border-black/10 px-3 py-3 text-right font-medium">{color}</th><td className="border-b border-black/10 p-2"><input type="number" min="0" inputMode="numeric" value={value} onChange={(e) => setForm({ ...form, variantStock: { ...form.variantStock, [key]: Math.max(0, Number(e.target.value || 0)) } })} className={`w-full rounded-lg border px-3 py-2.5 text-center font-semibold outline-none focus:border-black ${value === 0 ? "border-red-200 bg-red-50" : "border-black/10 bg-white"}`} />{value === 0 && <span className="mt-1 block text-center text-[10px] text-red-500">نفد</span>}</td></tr>
+                              })}</tbody>
+                            </>
+                          ) : (
+                            <>
+                              <thead><tr className="bg-neutral-50"><th className="border-b border-l border-black/10 px-3 py-3 text-right font-medium">المقاس</th><th className="border-b border-black/10 px-3 py-3 text-center font-medium">عدد القطع</th></tr></thead>
+                              <tbody>{sizes.map((size) => {
+                                const key = `-|${size}`
+                                const value = Number(form.variantStock[key] ?? 0)
+                                return <tr key={size}><th className="border-b border-l border-black/10 px-3 py-3 text-right font-medium">{size}</th><td className="border-b border-black/10 p-2"><input type="number" min="0" inputMode="numeric" value={value} onChange={(e) => setForm({ ...form, variantStock: { ...form.variantStock, [key]: Math.max(0, Number(e.target.value || 0)) } })} className={`w-full rounded-lg border px-3 py-2.5 text-center font-semibold outline-none focus:border-black ${value === 0 ? "border-red-200 bg-red-50" : "border-black/10 bg-white"}`} />{value === 0 && <span className="mt-1 block text-center text-[10px] text-red-500">نفد</span>}</td></tr>
+                              })}</tbody>
+                            </>
+                          )}
+                        </table>
+                      </div>
+
+                      <div className="mt-4 rounded-xl bg-neutral-50 px-3 py-2.5 text-xs leading-5 text-gray-500">
+                        <strong className="text-gray-700">مثال:</strong> لو عندك 5 أسود مقاس 1 و8 أسود مقاس 2، اكتبي 5 و8 في الخانات. لو عميل اشترى أسود مقاس 2، المخزون يصبح 7 فقط.
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap items-center gap-3">
+                        <label className="text-xs text-gray-500">تنبيه عند وصول الإجمالي إلى</label>
+                        <input
+                          min="0"
+                          type="number"
+                          value={form.lowStockThreshold}
+                          onChange={(e) => setForm({ ...form, lowStockThreshold: e.target.value })}
+                          className="w-24 rounded-xl border border-black/10 px-3 py-2 text-sm outline-none focus:border-black"
+                        />
+                        <span className="text-xs text-gray-400">قطعة</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
             {step===4 && <div className="space-y-5"><div><label className="mb-1.5 block text-sm font-medium">الوصف</label><textarea rows={4} value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="اكتبي وصفًا مختصرًا وجذابًا للمنتج..." className="w-full resize-none rounded-xl border border-black/10 px-4 py-3 text-sm outline-none"/></div><div className="rounded-2xl border border-black/10 p-4"><div className="mb-3 flex items-center justify-between"><p className="text-sm font-semibold">جدول المقاسات <span className="font-normal text-gray-400">اختياري</span></p><div className="flex gap-2"><button type="button" onClick={addSizeChartColumn} className="rounded-lg border border-black/10 px-2.5 py-1.5 text-xs">+ عمود</button><button type="button" onClick={addSizeChartRow} className="rounded-lg border border-black/10 px-2.5 py-1.5 text-xs">+ صف</button></div></div><div className="overflow-x-auto"><table className="w-full min-w-max border-collapse text-xs"><thead><tr>{form.sizeChartColumns.map((col,i)=><th key={i} className="p-1"><div className="flex items-center gap-1"><input value={col} onChange={e=>setColumnAt(i,e.target.value)} placeholder="اسم العمود" className="w-24 rounded-lg border border-black/10 px-2 py-1.5 outline-none"/>{form.sizeChartColumns.length>1&&<button type="button" onClick={()=>removeSizeChartColumn(i)} className="text-gray-400"><X size={13}/></button>}</div></th>)}</tr></thead><tbody>{form.sizeChartRows.map((row,ri)=><tr key={ri}>{row.map((cell,ci)=><td key={ci} className="p-1"><input value={cell} onChange={e=>setCellAt(ri,ci,e.target.value)} className="w-24 rounded-lg border border-black/10 px-2 py-1.5 outline-none"/></td>)}</tr>)}</tbody></table></div></div><div><label className="mb-1.5 block text-sm font-medium">تفاصيل الخامة <span className="font-normal text-gray-400">اختياري</span></label><textarea rows={2} value={form.materialDetails} onChange={e=>setForm({...form,materialDetails:e.target.value})} placeholder="مثال: قماش كريب فاخر" className="w-full resize-none rounded-xl border border-black/10 px-4 py-3 text-sm outline-none"/></div><div><label className="mb-1.5 block text-sm font-medium">تعليمات العناية <span className="font-normal text-gray-400">اختياري</span></label><textarea rows={3} value={form.careInstructions} onChange={e=>setForm({...form,careInstructions:e.target.value})} placeholder="غسيل يدوي بماء بارد\nلا تستخدمي مبيض\nكوي على حرارة منخفضة" className="w-full resize-none rounded-xl border border-black/10 px-4 py-3 text-sm outline-none"/></div><div className="rounded-2xl bg-neutral-50 p-4"><p className="mb-3 text-sm font-semibold">النشر</p><div className="grid gap-3 sm:grid-cols-3"><label className="flex items-center gap-2 rounded-xl bg-white p-3 text-sm"><input type="checkbox" checked={form.featured} onChange={e=>setForm({...form,featured:e.target.checked})}/> مميز</label><label className="flex items-center gap-2 rounded-xl bg-white p-3 text-sm"><input type="checkbox" checked={form.bestSeller} onChange={e=>setForm({...form,bestSeller:e.target.checked})}/> الأكثر مبيعًا</label><label className="flex items-center gap-2 rounded-xl bg-white p-3 text-sm"><input type="checkbox" checked={form.active} onChange={e=>setForm({...form,active:e.target.checked})}/> ظاهر في المتجر</label></div></div><div className="rounded-2xl border border-dashed border-black/10 p-4"><p className="text-xs text-gray-500">مراجعة سريعة</p><div className="mt-2 grid grid-cols-3 gap-2 text-center"><div><strong className="block text-lg">{form.images.filter(Boolean).length}</strong><span className="text-[10px] text-gray-400">صور</span></div><div><strong className="block text-lg">{listFromText(form.colors).length}</strong><span className="text-[10px] text-gray-400">ألوان</span></div><div><strong className="block text-lg">{listFromText(form.sizes).length}</strong><span className="text-[10px] text-gray-400">مقاسات</span></div></div></div></div>}
           </div>
