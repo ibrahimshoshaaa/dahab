@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Instagram, Facebook, MessageCircle, ArrowUp } from "lucide-react"
+import { MessageCircle, ArrowUp } from "lucide-react"
 import SiteLogo from "./SiteLogo"
 
 export default function StoreFooter() {
@@ -12,8 +12,8 @@ export default function StoreFooter() {
             عبايات مصرية وإكسسوارات مختارة بعناية، لأن أناقتك تستحق الأفضل.
           </p>
           <div className="mt-6 flex gap-3">
-            <a aria-label="Instagram" href="#" className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 hover:border-white/30"><Instagram size={17} /></a>
-            <a aria-label="Facebook" href="#" className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 hover:border-white/30"><Facebook size={17} /></a>
+            <a aria-label="Instagram" href="#" className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 hover:border-white/30"><span className="text-sm font-semibold">IG</span></a>
+            <a aria-label="Facebook" href="#" className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 hover:border-white/30"><span className="text-sm font-semibold">f</span></a>
             <a aria-label="WhatsApp" href="#" className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 hover:border-white/30"><MessageCircle size={17} /></a>
           </div>
         </div>
