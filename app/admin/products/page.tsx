@@ -330,18 +330,24 @@ export default function AdminProductsPage() {
     setStep((current) => Math.max(1, current - 1))
   }
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault()
-    setSaving(true)
+  async function handleSave() {
     setError("")
+
+    if (!form.name.trim() || !form.price || Number(form.price) < 0) {
+      setError("اكتبي اسم المنتج والسعر أولًا")
+      setStep(1)
+      return
+    }
 
     const images = form.images.map((img) => img.trim()).filter(Boolean)
 
     if (images.length === 0) {
       setError("من فضلك أضيفي صورة واحدة على الأقل")
-      setSaving(false)
+      setStep(2)
       return
     }
+
+    setSaving(true)
 
     // نحفظ جدول المقاسات فقط لو فيه أعمدة وصفوف مكتملة
     const sizeChartColumns = form.sizeChartColumns.map((c) => c.trim()).filter(Boolean)
@@ -425,16 +431,7 @@ export default function AdminProductsPage() {
       </section>
 
       {showForm && <div className="fixed inset-0 z-50 bg-black/45 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
-        <form
-          onSubmit={handleSave}
-          onKeyDown={(e) => {
-            // منع الإرسال التلقائي للفورم عند الضغط على Enter داخل أي input/select.
-            // الحفظ يتم فقط من زر "حفظ المنتج" في الخطوة الرابعة.
-            const target = e.target as HTMLElement
-            if (e.key === "Enter" && (target.tagName === "INPUT" || target.tagName === "SELECT")) {
-              e.preventDefault()
-            }
-          }}
+        <div
           dir="rtl"
           className="flex h-full w-full flex-col bg-white sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-3xl"
         >
@@ -498,15 +495,22 @@ export default function AdminProductsPage() {
                         value={colorInput}
                         onChange={(e) => setColorInput(e.target.value.replace(/,/g, ""))}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === ",") {
+                          if (e.key === "Backspace" && !colorInput && colors.length) {
                             e.preventDefault()
-                            addVariant("color")
+                            removeVariant("color", colors[colors.length - 1])
                           }
-                          if (e.key === "Backspace" && !colorInput && colors.length) removeVariant("color", colors[colors.length - 1])
                         }}
-                        placeholder={colors.length ? "إضافة لون..." : "مثال: أسود ثم Enter"}
-                        className="min-w-[150px] flex-1 border-0 bg-transparent px-1 py-1.5 text-sm outline-none"
+                        placeholder={colors.length ? "اكتبي لونًا..." : "مثال: أسود"}
+                        className="min-w-[120px] flex-1 border-0 bg-transparent px-1 py-1.5 text-sm outline-none"
                       />
+                      <button
+                        type="button"
+                        onClick={() => addVariant("color")}
+                        disabled={!colorInput.trim()}
+                        className="shrink-0 rounded-lg bg-black px-3 py-2 text-xs text-white disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
+                      >
+                        + إضافة
+                      </button>
                     </div>
                   </div>
 
@@ -525,15 +529,22 @@ export default function AdminProductsPage() {
                         value={sizeInput}
                         onChange={(e) => setSizeInput(e.target.value.replace(/,/g, ""))}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === ",") {
+                          if (e.key === "Backspace" && !sizeInput && sizes.length) {
                             e.preventDefault()
-                            addVariant("size")
+                            removeVariant("size", sizes[sizes.length - 1])
                           }
-                          if (e.key === "Backspace" && !sizeInput && sizes.length) removeVariant("size", sizes[sizes.length - 1])
                         }}
-                        placeholder={sizes.length ? "إضافة مقاس..." : "مثال: 1 ثم Enter"}
-                        className="min-w-[150px] flex-1 border-0 bg-transparent px-1 py-1.5 text-sm outline-none"
+                        placeholder={sizes.length ? "اكتبي مقاسًا..." : "مثال: 1"}
+                        className="min-w-[120px] flex-1 border-0 bg-transparent px-1 py-1.5 text-sm outline-none"
                       />
+                      <button
+                        type="button"
+                        onClick={() => addVariant("size")}
+                        disabled={!sizeInput.trim()}
+                        className="shrink-0 rounded-lg bg-black px-3 py-2 text-xs text-white disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
+                      >
+                        + إضافة
+                      </button>
                     </div>
                   </div>
 
@@ -650,8 +661,8 @@ export default function AdminProductsPage() {
             {step===4 && <div className="space-y-5"><div><label className="mb-1.5 block text-sm font-medium">الوصف</label><textarea rows={4} value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="اكتبي وصفًا مختصرًا وجذابًا للمنتج..." className="w-full resize-none rounded-xl border border-black/10 px-4 py-3 text-sm outline-none"/></div><div className="rounded-2xl border border-black/10 p-4"><div className="mb-3 flex items-center justify-between"><p className="text-sm font-semibold">جدول المقاسات <span className="font-normal text-gray-400">اختياري</span></p><div className="flex gap-2"><button type="button" onClick={addSizeChartColumn} className="rounded-lg border border-black/10 px-2.5 py-1.5 text-xs">+ عمود</button><button type="button" onClick={addSizeChartRow} className="rounded-lg border border-black/10 px-2.5 py-1.5 text-xs">+ صف</button></div></div><div className="overflow-x-auto"><table className="w-full min-w-max border-collapse text-xs"><thead><tr>{form.sizeChartColumns.map((col,i)=><th key={i} className="p-1"><div className="flex items-center gap-1"><input value={col} onChange={e=>setColumnAt(i,e.target.value)} placeholder="اسم العمود" className="w-24 rounded-lg border border-black/10 px-2 py-1.5 outline-none"/>{form.sizeChartColumns.length>1&&<button type="button" onClick={()=>removeSizeChartColumn(i)} className="text-gray-400"><X size={13}/></button>}</div></th>)}</tr></thead><tbody>{form.sizeChartRows.map((row,ri)=><tr key={ri}>{row.map((cell,ci)=><td key={ci} className="p-1"><input value={cell} onChange={e=>setCellAt(ri,ci,e.target.value)} className="w-24 rounded-lg border border-black/10 px-2 py-1.5 outline-none"/></td>)}</tr>)}</tbody></table></div></div><div><label className="mb-1.5 block text-sm font-medium">تفاصيل الخامة <span className="font-normal text-gray-400">اختياري</span></label><textarea rows={2} value={form.materialDetails} onChange={e=>setForm({...form,materialDetails:e.target.value})} placeholder="مثال: قماش كريب فاخر" className="w-full resize-none rounded-xl border border-black/10 px-4 py-3 text-sm outline-none"/></div><div><label className="mb-1.5 block text-sm font-medium">تعليمات العناية <span className="font-normal text-gray-400">اختياري</span></label><textarea rows={3} value={form.careInstructions} onChange={e=>setForm({...form,careInstructions:e.target.value})} placeholder="غسيل يدوي بماء بارد\nلا تستخدمي مبيض\nكوي على حرارة منخفضة" className="w-full resize-none rounded-xl border border-black/10 px-4 py-3 text-sm outline-none"/></div><div className="rounded-2xl bg-neutral-50 p-4"><p className="mb-3 text-sm font-semibold">النشر</p><div className="grid gap-3 sm:grid-cols-3"><label className="flex items-center gap-2 rounded-xl bg-white p-3 text-sm"><input type="checkbox" checked={form.featured} onChange={e=>setForm({...form,featured:e.target.checked})}/> مميز</label><label className="flex items-center gap-2 rounded-xl bg-white p-3 text-sm"><input type="checkbox" checked={form.bestSeller} onChange={e=>setForm({...form,bestSeller:e.target.checked})}/> الأكثر مبيعًا</label><label className="flex items-center gap-2 rounded-xl bg-white p-3 text-sm"><input type="checkbox" checked={form.active} onChange={e=>setForm({...form,active:e.target.checked})}/> ظاهر في المتجر</label></div></div><div className="rounded-2xl border border-dashed border-black/10 p-4"><p className="text-xs text-gray-500">مراجعة سريعة</p><div className="mt-2 grid grid-cols-3 gap-2 text-center"><div><strong className="block text-lg">{form.images.filter(Boolean).length}</strong><span className="text-[10px] text-gray-400">صور</span></div><div><strong className="block text-lg">{listFromText(form.colors).length}</strong><span className="text-[10px] text-gray-400">ألوان</span></div><div><strong className="block text-lg">{listFromText(form.sizes).length}</strong><span className="text-[10px] text-gray-400">مقاسات</span></div></div></div></div>}
           </div>
 
-          <div className="shrink-0 border-t border-black/10 bg-white px-5 py-4 sm:px-6"><div className="flex gap-2">{step>1&&<button type="button" onClick={goBack} className="flex items-center justify-center gap-1 rounded-xl border border-black/10 px-4 py-3 text-sm"><ChevronRight size={16}/> السابق</button>}<button type="button" onClick={()=>setShowForm(false)} className="rounded-xl border border-black/10 px-4 py-3 text-sm">إلغاء</button>{step<4?<button type="button" onClick={goNext} className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-black py-3 text-sm text-white">التالي <ChevronLeft size={16}/></button>:<button type="submit" disabled={saving} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-black py-3 text-sm text-white disabled:opacity-60"><Check size={16}/>{saving?"جارِ الحفظ...":form.id?"حفظ التعديلات":"حفظ المنتج"}</button>}</div></div>
-        </form>
+          <div className="shrink-0 border-t border-black/10 bg-white px-5 py-4 sm:px-6"><div className="flex gap-2">{step>1&&<button type="button" onClick={goBack} className="flex items-center justify-center gap-1 rounded-xl border border-black/10 px-4 py-3 text-sm"><ChevronRight size={16}/> السابق</button>}<button type="button" onClick={()=>setShowForm(false)} className="rounded-xl border border-black/10 px-4 py-3 text-sm">إلغاء</button>{step<4?<button type="button" onClick={goNext} className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-black py-3 text-sm text-white">التالي <ChevronLeft size={16}/></button>:<button type="button" onClick={handleSave} disabled={saving} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-black py-3 text-sm text-white disabled:opacity-60"><Check size={16}/>{saving?"جارِ الحفظ...":form.id?"حفظ التعديلات":"حفظ المنتج"}</button>}</div></div>
+        </div>
       </div>}
     </main>
   )
