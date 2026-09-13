@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Pencil, Trash2, Plus, X } from "lucide-react"
+import { Pencil, Trash2, Plus, X, Check, ChevronLeft, ChevronRight, Image as ImageIcon, Package, Tags, FileText } from "lucide-react"
 import {
   getAdminToken,
   adminLogout,
@@ -128,6 +128,9 @@ export default function AdminProductsPage() {
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState(emptyForm)
+  const [step, setStep] = useState(1)
+  const [colorInput, setColorInput] = useState("")
+  const [sizeInput, setSizeInput] = useState("")
 
   async function load() {
     setLoading(true)
@@ -154,6 +157,9 @@ export default function AdminProductsPage() {
 
   function openNewForm() {
     setForm(emptyForm)
+    setColorInput("")
+    setSizeInput("")
+    setStep(1)
     setShowForm(true)
   }
 
@@ -191,6 +197,9 @@ export default function AdminProductsPage() {
       lowStockThreshold: String(product.lowStockThreshold ?? 5),
       variantStock: product.variantStock || {},
     })
+    setColorInput("")
+    setSizeInput("")
+    setStep(1)
     setShowForm(true)
   }
 
@@ -251,6 +260,76 @@ export default function AdminProductsPage() {
     }))
   }
 
+  function listFromText(value: string) {
+    return value.split(",").map((x) => x.trim()).filter(Boolean)
+  }
+
+  function buildVariantStock(colors: string[], sizes: string[], current: Record<string, number>) {
+    const next: Record<string, number> = {}
+    if (colors.length && sizes.length) {
+      colors.forEach((color) => sizes.forEach((size) => {
+        const key = `${color}|${size}`
+        next[key] = Number(current[key] ?? 0)
+      }))
+    } else if (colors.length) {
+      colors.forEach((color) => { const key = `${color}|-`; next[key] = Number(current[key] ?? 0) })
+    } else if (sizes.length) {
+      sizes.forEach((size) => { const key = `-|${size}`; next[key] = Number(current[key] ?? 0) })
+    }
+    return next
+  }
+
+  function syncVariantStock() {
+    setForm((current) => ({ ...current, variantStock: buildVariantStock(listFromText(current.colors), listFromText(current.sizes), current.variantStock) }))
+  }
+
+  function addVariant(type: "color" | "size") {
+    const raw = type === "color" ? colorInput : sizeInput
+    const value = raw.trim().replace(/,/g, "")
+    if (!value) return
+    setForm((current) => {
+      const existing = listFromText(type === "color" ? current.colors : current.sizes)
+      if (existing.some((item) => item.toLowerCase() === value.toLowerCase())) return current
+      const colors = type === "color" ? [...existing, value] : listFromText(current.colors)
+      const sizes = type === "size" ? [...existing, value] : listFromText(current.sizes)
+      return { ...current, colors: colors.join(", "), sizes: sizes.join(", "), variantStock: buildVariantStock(colors, sizes, current.variantStock) }
+    })
+    if (type === "color") setColorInput("")
+    else setSizeInput("")
+  }
+
+  function removeVariant(type: "color" | "size", value: string) {
+    setForm((current) => {
+      const colors = type === "color" ? listFromText(current.colors).filter((item) => item !== value) : listFromText(current.colors)
+      const sizes = type === "size" ? listFromText(current.sizes).filter((item) => item !== value) : listFromText(current.sizes)
+      return { ...current, colors: colors.join(", "), sizes: sizes.join(", "), variantStock: buildVariantStock(colors, sizes, current.variantStock) }
+    })
+  }
+
+  function validateStep(targetStep: number) {
+    if (targetStep >= 2 && (!form.name.trim() || !form.price || Number(form.price) < 0)) {
+      setError("اكتبي اسم المنتج والسعر الأول")
+      return false
+    }
+    if (targetStep >= 3 && form.images.every((img) => !img.trim())) {
+      setError("أضيفي صورة واحدة على الأقل للمنتج")
+      return false
+    }
+    if (targetStep >= 3) syncVariantStock()
+    setError("")
+    return true
+  }
+
+  function goNext() {
+    if (!validateStep(step + 1)) return
+    setStep((current) => Math.min(4, current + 1))
+  }
+
+  function goBack() {
+    setError("")
+    setStep((current) => Math.max(1, current - 1))
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
@@ -298,7 +377,7 @@ export default function AdminProductsPage() {
       sizeChart,
       materialDetails: form.materialDetails || undefined,
       careInstructions: form.careInstructions || undefined,
-      stock: Object.keys(form.variantStock).length ? Object.values(form.variantStock).reduce((sum, value) => sum + Math.max(0, Number(value || 0)), 0) : Math.max(0, Number(form.stock || 0)),
+      stock: Object.keys(form.variantStock).length ? Object.values(form.variantStock).reduce<number>((sum, value) => sum + Math.max(0, Number(value || 0)), 0) : Math.max(0, Number(form.stock || 0)),
       lowStockThreshold: Math.max(0, Number(form.lowStockThreshold || 0)),
       variantStock: form.variantStock,
     }
@@ -336,496 +415,35 @@ export default function AdminProductsPage() {
   return (
     <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
       <AdminHeader onLogout={handleLogout} />
-
-      <section className="mx-auto max-w-7xl px-5 py-10">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">المنتجات</h1>
-
-          <button
-            onClick={openNewForm}
-            className="flex items-center gap-2 rounded-full bg-black px-5 py-2.5 text-sm text-white"
-          >
-            <Plus size={16} />
-            إضافة منتج
-          </button>
+      <section className="mx-auto max-w-7xl px-4 py-7 sm:px-5 sm:py-10">
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <div><h1 className="text-xl font-semibold">المنتجات</h1><p className="mt-1 text-xs text-gray-400">إضافة وتعديل المنتجات والمخزون بسهولة</p></div>
+          <button onClick={openNewForm} className="flex items-center gap-2 rounded-full bg-black px-5 py-2.5 text-sm text-white"><Plus size={16}/> إضافة منتج</button>
         </div>
-
-        {error && (
-          <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
-            {error}
-          </p>
-        )}
-
-        {loading ? (
-          <p className="text-sm text-gray-500">جارِ التحميل...</p>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {products.map((product) => (
-              <div
-                key={product.id}
-                className="overflow-hidden rounded-2xl bg-white shadow-sm"
-              >
-                <div className="aspect-[4/3] bg-[#eee]">
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-
-                <div className="p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-xs text-gray-400">{product.category}</p>
-                      <h3 className="font-medium">{product.name}</h3>
-                    </div>
-
-                    {product.active === false && (
-                      <span className="shrink-0 rounded-full bg-gray-100 px-2 py-1 text-[10px] text-gray-500">
-                        مخفي
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <p className="text-sm font-semibold">
-                      {product.price.toLocaleString("ar-EG")} جنيه
-                    </p>
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
-                        (product.stock ?? 0) <= (product.lowStockThreshold ?? 5)
-                          ? "bg-red-50 text-red-600"
-                          : "bg-emerald-50 text-emerald-700"
-                      }`}
-                    >
-                      مخزون: {(product.stock ?? 0).toLocaleString("ar-EG")}
-                    </span>
-                  </div>
-
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      onClick={() => openEditForm(product)}
-                      className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-black/10 py-2 text-sm"
-                    >
-                      <Pencil size={14} />
-                      تعديل
-                    </button>
-
-                    <button
-                      onClick={() => handleDelete(product.id)}
-                      className="flex items-center justify-center rounded-xl border border-red-100 px-3 text-red-600"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        {error && <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>}
+        {loading ? <p className="text-sm text-gray-500">جارِ التحميل...</p> : <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{products.map((product) => <div key={product.id} className="overflow-hidden rounded-2xl bg-white shadow-sm"><div className="aspect-[4/3] bg-[#eee]"><img src={product.image} alt={product.name} className="h-full w-full object-cover"/></div><div className="p-4"><div className="flex items-start justify-between gap-2"><div><p className="text-xs text-gray-400">{product.category}</p><h3 className="font-medium">{product.name}</h3></div>{product.active===false&&<span className="rounded-full bg-gray-100 px-2 py-1 text-[10px] text-gray-500">مخفي</span>}</div><div className="mt-2 flex items-center justify-between gap-2"><p className="text-sm font-semibold">{product.price.toLocaleString("ar-EG")} جنيه</p><span className={`rounded-full px-2.5 py-1 text-[11px] ${(product.stock??0)<=(product.lowStockThreshold??5)?"bg-red-50 text-red-600":"bg-emerald-50 text-emerald-700"}`}>مخزون: {(product.stock??0).toLocaleString("ar-EG")}</span></div><div className="mt-4 flex gap-2"><button onClick={()=>openEditForm(product)} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-black/10 py-2 text-sm"><Pencil size={14}/> تعديل</button><button onClick={()=>handleDelete(product.id)} className="flex items-center justify-center rounded-xl border border-red-100 px-3 text-red-600"><Trash2 size={14}/></button></div></div></div>)}</div>}
       </section>
 
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <form
-            onSubmit={handleSave}
-            dir="rtl"
-            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6"
-          >
-            <h2 className="mb-5 text-lg font-semibold">
-              {form.id ? "تعديل المنتج" : "إضافة منتج جديد"}
-            </h2>
+      {showForm && <div className="fixed inset-0 z-50 bg-black/45 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
+        <form onSubmit={handleSave} dir="rtl" className="flex h-full w-full flex-col bg-white sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-3xl">
+          <div className="shrink-0 border-b border-black/10 px-5 pb-4 pt-5 sm:px-6">
+            <div className="flex items-start justify-between gap-3"><div><p className="text-xs text-gray-400">{form.id?"تعديل منتج":"منتج جديد"}</p><h2 className="mt-1 text-xl font-semibold">{form.id?form.name||"تعديل المنتج":"إضافة منتج جديد"}</h2></div><button type="button" onClick={()=>setShowForm(false)} className="flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-gray-500"><X size={18}/></button></div>
+            <div className="mt-5 grid grid-cols-4 gap-1.5">{[[1,"البيانات",Package],[2,"الصور",ImageIcon],[3,"المخزون",Tags],[4,"التفاصيل",FileText]].map(([number,label,Icon])=>{const n=number as number;const I=Icon as typeof Package;const done=step>n;return <button key={n} type="button" onClick={()=>n<step&&setStep(n)} className={`rounded-xl px-1 py-2 text-center text-[10px] sm:text-xs ${step===n?"bg-black text-white":done?"bg-gray-100 text-black":"bg-gray-50 text-gray-400"}`}><span className="mx-auto mb-1 flex h-6 w-6 items-center justify-center rounded-full border border-current">{done?<Check size={12}/>:<I size={12}/>}</span>{label}</button>})}</div>
+          </div>
 
-            <div className="space-y-4">
-              <input
-                required
-                placeholder="اسم المنتج"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full rounded-xl border border-black/10 px-4 py-2.5 text-sm outline-none"
-              />
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+            {step===1 && <div className="space-y-4"><div><label className="mb-1.5 block text-sm font-medium">اسم المنتج</label><input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="مثال: عباية لؤلؤة" className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none"/></div>{form.id&&<div><label className="mb-1.5 block text-xs text-gray-500">الرابط المختصر</label><input value={form.slug} onChange={e=>setForm({...form,slug:e.target.value.toLowerCase().replace(/[^a-z0-9-]/g,"")})} placeholder="pearl-abaya" dir="ltr" className="w-full rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm outline-none"/></div>}<div className="grid grid-cols-2 gap-3"><div><label className="mb-1.5 block text-sm font-medium">السعر</label><input required min="0" type="number" value={form.price} onChange={e=>setForm({...form,price:e.target.value})} placeholder="1499" className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none"/></div><div><label className="mb-1.5 block text-sm font-medium">السعر قبل الخصم</label><input min="0" type="number" value={form.oldPrice} onChange={e=>setForm({...form,oldPrice:e.target.value})} placeholder="اختياري" className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none"/></div></div><div><label className="mb-1.5 block text-sm font-medium">القسم</label><select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none"><option value="عبايات">عبايات</option><option value="إكسسوارات">إكسسوارات</option></select></div><div><label className="mb-1.5 block text-sm font-medium">الشارة <span className="font-normal text-gray-400">اختياري</span></label><input value={form.badge} onChange={e=>setForm({...form,badge:e.target.value})} placeholder="جديد / الأكثر مبيعًا / خصم" className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none"/></div></div>}
 
-              {form.id && (
-                <input
-                  placeholder="slug (إنجليزي فقط)"
-                  value={form.slug}
-                  onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })}
-                  className="w-full rounded-xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-sm outline-none"
-                  dir="ltr"
-                />
-              )}
+            {step===2 && <div className="space-y-4"><div className="rounded-2xl bg-neutral-50 p-4"><p className="text-sm font-semibold">صور المنتج</p><p className="mt-1 text-xs leading-5 text-gray-500">الصورة الأولى هي الرئيسية. أضيفي صورة واحدة على الأقل، ويمكنك إضافة حتى {MAX_IMAGES} صور.</p></div><div className="grid gap-3 sm:grid-cols-2">{form.images.map((img,index)=><ProductImageSlot key={index} index={index} value={img} onChange={setImageAt}/>)}</div></div>}
 
-              <select
-                value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value })}
-                className="w-full rounded-xl border border-black/10 px-4 py-2.5 text-sm outline-none"
-              >
-                <option value="عبايات">عبايات</option>
-                <option value="إكسسوارات">إكسسوارات</option>
-              </select>
+            {step===3 && (()=>{const colors=listFromText(form.colors),sizes=listFromText(form.sizes);const has=colors.length||sizes.length;const dc=colors.length?colors:["-"];const ds=sizes.length?sizes:["-"];const total=Object.values(form.variantStock).reduce<number>((sum,value)=>sum+Math.max(0,Number(value||0)),0);return <div className="space-y-5"><div className="rounded-2xl bg-neutral-50 p-4"><p className="text-base font-semibold">الألوان والمقاسات والمخزون</p><p className="mt-1 text-xs leading-5 text-gray-500">ضيفي كل لون أو مقاس واضغطي Enter. جدول المخزون بيتكوّن تلقائيًا، من غير زر إضافي.</p></div><div><label className="mb-2 block text-sm font-medium">الألوان</label><div className="flex min-h-12 flex-wrap items-center gap-2 rounded-xl border border-black/10 px-3 py-2 focus-within:border-black">{colors.map(c=><span key={c} className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1.5 text-xs">{c}<button type="button" onClick={()=>removeVariant("color",c)} className="text-gray-400 hover:text-red-500"><X size={13}/></button></span>)}<input value={colorInput} onChange={e=>setColorInput(e.target.value.replace(/,/g,""))} onKeyDown={e=>{if(e.key==="Enter"||e.key===","){e.preventDefault();addVariant("color")}if(e.key==="Backspace"&&!colorInput&&colors.length)removeVariant("color",colors[colors.length-1])}} placeholder={colors.length?"إضافة لون...":"اكتبي لون واضغطي Enter"} className="min-w-[130px] flex-1 border-0 bg-transparent px-1 py-1.5 text-sm outline-none"/></div></div><div><label className="mb-2 block text-sm font-medium">المقاسات</label><div className="flex min-h-12 flex-wrap items-center gap-2 rounded-xl border border-black/10 px-3 py-2 focus-within:border-black">{sizes.map(z=><span key={z} className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1.5 text-xs">{z}<button type="button" onClick={()=>removeVariant("size",z)} className="text-gray-400 hover:text-red-500"><X size={13}/></button></span>)}<input value={sizeInput} onChange={e=>setSizeInput(e.target.value.replace(/,/g,""))} onKeyDown={e=>{if(e.key==="Enter"||e.key===","){e.preventDefault();addVariant("size")}if(e.key==="Backspace"&&!sizeInput&&sizes.length)removeVariant("size",sizes[sizes.length-1])}} placeholder={sizes.length?"إضافة مقاس...":"اكتبي مقاس واضغطي Enter"} className="min-w-[130px] flex-1 border-0 bg-transparent px-1 py-1.5 text-sm outline-none"/></div></div>{!has?<div className="rounded-2xl border border-black/10 p-4"><label className="mb-1.5 block text-sm font-medium">الكمية المتاحة</label><input required min="0" type="number" value={form.stock} onChange={e=>setForm({...form,stock:e.target.value})} className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none"/></div>:<div className="rounded-2xl border border-black/10 p-4"><div className="mb-4 flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">مخزون كل تركيبة</p><p className="mt-1 text-xs text-gray-500">اكتبي الكمية أمام كل لون × مقاس.</p></div><span className="shrink-0 rounded-full bg-black px-3 py-1.5 text-xs text-white">{total} قطعة</span></div><div className="overflow-x-auto rounded-xl border border-black/10"><table className="w-full min-w-[380px] border-collapse text-sm"><thead><tr className="bg-neutral-50"><th className="border-b border-l border-black/10 px-3 py-3 text-right">اللون / المقاس</th>{ds.map(z=><th key={z} className="border-b border-l border-black/10 px-3 py-3 text-center">{z==="-"?"موحد":z}</th>)}</tr></thead><tbody>{dc.map(c=><tr key={c}><th className="border-b border-l border-black/10 px-3 py-3 text-right font-medium">{c==="-"?"موحد":c}</th>{ds.map(z=>{const key=`${c}|${z}`,value=Number(form.variantStock[key]??0);return <td key={key} className="border-b border-black/10 p-2"><input type="number" min="0" value={value} onChange={e=>setForm({...form,variantStock:{...form.variantStock,[key]:Math.max(0,Number(e.target.value||0))}})} className={`w-full rounded-lg border px-3 py-2.5 text-center font-semibold outline-none ${value===0?"border-red-200 bg-red-50":"border-black/10"}`}/>{value===0&&<span className="mt-1 block text-center text-[10px] text-red-500">نفد</span>}</td>})}</tr>)}</tbody></table></div><div className="mt-4 flex items-center gap-3"><label className="text-xs text-gray-500">تنبيه عند وصول الإجمالي إلى</label><input min="0" type="number" value={form.lowStockThreshold} onChange={e=>setForm({...form,lowStockThreshold:e.target.value})} className="w-24 rounded-xl border border-black/10 px-3 py-2 text-sm outline-none"/></div></div>}</div>})()}
 
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  required
-                  type="number"
-                  placeholder="السعر"
-                  value={form.price}
-                  onChange={(e) => setForm({ ...form, price: e.target.value })}
-                  className="w-full rounded-xl border border-black/10 px-4 py-2.5 text-sm outline-none"
-                />
-                <input
-                  type="number"
-                  placeholder="السعر قبل الخصم (اختياري)"
-                  value={form.oldPrice}
-                  onChange={(e) => setForm({ ...form, oldPrice: e.target.value })}
-                  className="w-full rounded-xl border border-black/10 px-4 py-2.5 text-sm outline-none"
-                />
-              </div>
+            {step===4 && <div className="space-y-5"><div><label className="mb-1.5 block text-sm font-medium">الوصف</label><textarea rows={4} value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="اكتبي وصفًا مختصرًا وجذابًا للمنتج..." className="w-full resize-none rounded-xl border border-black/10 px-4 py-3 text-sm outline-none"/></div><div className="rounded-2xl border border-black/10 p-4"><div className="mb-3 flex items-center justify-between"><p className="text-sm font-semibold">جدول المقاسات <span className="font-normal text-gray-400">اختياري</span></p><div className="flex gap-2"><button type="button" onClick={addSizeChartColumn} className="rounded-lg border border-black/10 px-2.5 py-1.5 text-xs">+ عمود</button><button type="button" onClick={addSizeChartRow} className="rounded-lg border border-black/10 px-2.5 py-1.5 text-xs">+ صف</button></div></div><div className="overflow-x-auto"><table className="w-full min-w-max border-collapse text-xs"><thead><tr>{form.sizeChartColumns.map((col,i)=><th key={i} className="p-1"><div className="flex items-center gap-1"><input value={col} onChange={e=>setColumnAt(i,e.target.value)} placeholder="اسم العمود" className="w-24 rounded-lg border border-black/10 px-2 py-1.5 outline-none"/>{form.sizeChartColumns.length>1&&<button type="button" onClick={()=>removeSizeChartColumn(i)} className="text-gray-400"><X size={13}/></button>}</div></th>)}</tr></thead><tbody>{form.sizeChartRows.map((row,ri)=><tr key={ri}>{row.map((cell,ci)=><td key={ci} className="p-1"><input value={cell} onChange={e=>setCellAt(ri,ci,e.target.value)} className="w-24 rounded-lg border border-black/10 px-2 py-1.5 outline-none"/></td>)}</tr>)}</tbody></table></div></div><div><label className="mb-1.5 block text-sm font-medium">تفاصيل الخامة <span className="font-normal text-gray-400">اختياري</span></label><textarea rows={2} value={form.materialDetails} onChange={e=>setForm({...form,materialDetails:e.target.value})} placeholder="مثال: قماش كريب فاخر" className="w-full resize-none rounded-xl border border-black/10 px-4 py-3 text-sm outline-none"/></div><div><label className="mb-1.5 block text-sm font-medium">تعليمات العناية <span className="font-normal text-gray-400">اختياري</span></label><textarea rows={3} value={form.careInstructions} onChange={e=>setForm({...form,careInstructions:e.target.value})} placeholder="غسيل يدوي بماء بارد\nلا تستخدمي مبيض\nكوي على حرارة منخفضة" className="w-full resize-none rounded-xl border border-black/10 px-4 py-3 text-sm outline-none"/></div><div className="rounded-2xl bg-neutral-50 p-4"><p className="mb-3 text-sm font-semibold">النشر</p><div className="grid gap-3 sm:grid-cols-3"><label className="flex items-center gap-2 rounded-xl bg-white p-3 text-sm"><input type="checkbox" checked={form.featured} onChange={e=>setForm({...form,featured:e.target.checked})}/> مميز</label><label className="flex items-center gap-2 rounded-xl bg-white p-3 text-sm"><input type="checkbox" checked={form.bestSeller} onChange={e=>setForm({...form,bestSeller:e.target.checked})}/> الأكثر مبيعًا</label><label className="flex items-center gap-2 rounded-xl bg-white p-3 text-sm"><input type="checkbox" checked={form.active} onChange={e=>setForm({...form,active:e.target.checked})}/> ظاهر في المتجر</label></div></div><div className="rounded-2xl border border-dashed border-black/10 p-4"><p className="text-xs text-gray-500">مراجعة سريعة</p><div className="mt-2 grid grid-cols-3 gap-2 text-center"><div><strong className="block text-lg">{form.images.filter(Boolean).length}</strong><span className="text-[10px] text-gray-400">صور</span></div><div><strong className="block text-lg">{listFromText(form.colors).length}</strong><span className="text-[10px] text-gray-400">ألوان</span></div><div><strong className="block text-lg">{listFromText(form.sizes).length}</strong><span className="text-[10px] text-gray-400">مقاسات</span></div></div></div></div>}
+          </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block text-xs text-gray-500">الكمية الحالية</label>
-                  <input
-                    required
-                    min="0"
-                    type="number"
-                    value={form.stock}
-                    onChange={(e) => setForm({ ...form, stock: e.target.value })}
-                    className="w-full rounded-xl border border-black/10 px-4 py-2.5 text-sm outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs text-gray-500">تنبيه عند الوصول إلى</label>
-                  <input
-                    required
-                    min="0"
-                    type="number"
-                    value={form.lowStockThreshold}
-                    onChange={(e) => setForm({ ...form, lowStockThreshold: e.target.value })}
-                    className="w-full rounded-xl border border-black/10 px-4 py-2.5 text-sm outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <p className="mb-2 text-sm font-medium">
-                  صور المنتج (حتى {MAX_IMAGES} صور — الأولى هي الرئيسية)
-                </p>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {form.images.map((img, index) => (
-                    <ProductImageSlot
-                      key={index}
-                      index={index}
-                      value={img}
-                      onChange={setImageAt}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <input
-                placeholder="badge (مثال: جديد)"
-                value={form.badge}
-                onChange={(e) => setForm({ ...form, badge: e.target.value })}
-                className="w-full rounded-xl border border-black/10 px-4 py-2.5 text-sm outline-none"
-              />
-
-              <input
-                placeholder="الألوان (افصل بينها بفاصلة)"
-                value={form.colors}
-                onChange={(e) => setForm({ ...form, colors: e.target.value })}
-                className="w-full rounded-xl border border-black/10 px-4 py-2.5 text-sm outline-none"
-              />
-
-              <input
-                placeholder="المقاسات (افصل بينها بفاصلة)"
-                value={form.sizes}
-                onChange={(e) => setForm({ ...form, sizes: e.target.value })}
-                className="w-full rounded-xl border border-black/10 px-4 py-2.5 text-sm outline-none"
-              />
-
-              <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
-                <div className="mb-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-base font-semibold">مخزون كل لون ومقاس</p>
-                      <p className="mt-1 text-xs leading-5 text-gray-500">
-                        بعد كتابة الألوان والمقاسات اضغط «إنشاء جدول المخزون»، ثم اكتب الكمية أمام كل تركيبة.
-                        مثال: أسود × مقاس 2 = 8 قطع.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const colors = form.colors.split(",").map(x => x.trim()).filter(Boolean)
-                        const sizes = form.sizes.split(",").map(x => x.trim()).filter(Boolean)
-                        const next: Record<string, number> = {}
-                        if (colors.length && sizes.length) {
-                          colors.forEach(color => sizes.forEach(size => {
-                            const key = `${color}|${size}`
-                            next[key] = Number(form.variantStock[key] ?? 0)
-                          }))
-                        } else if (colors.length) {
-                          colors.forEach(color => {
-                            const key = `${color}|-`
-                            next[key] = Number(form.variantStock[key] ?? 0)
-                          })
-                        } else if (sizes.length) {
-                          sizes.forEach(size => {
-                            const key = `-|${size}`
-                            next[key] = Number(form.variantStock[key] ?? 0)
-                          })
-                        }
-                        setForm({ ...form, variantStock: next })
-                      }}
-                      className="shrink-0 rounded-xl bg-black px-3 py-2 text-xs font-medium text-white"
-                    >
-                      إنشاء جدول المخزون
-                    </button>
-                  </div>
-                </div>
-
-                {Object.keys(form.variantStock).length > 0 ? (() => {
-                  const colors = form.colors.split(",").map(x => x.trim()).filter(Boolean)
-                  const sizes = form.sizes.split(",").map(x => x.trim()).filter(Boolean)
-                  const displayColors = colors.length ? colors : ["-"]
-                  const displaySizes = sizes.length ? sizes : ["-"]
-                  const totalVariantStock = Object.values(form.variantStock).reduce((sum, value) => sum + Math.max(0, Number(value || 0)), 0)
-
-                  return (
-                    <div>
-                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-neutral-50 px-3 py-2">
-                        <span className="text-xs text-gray-600">إجمالي المخزون المحسوب</span>
-                        <strong className="text-sm">{totalVariantStock} قطعة</strong>
-                      </div>
-
-                      <div className="overflow-x-auto rounded-xl border border-black/10">
-                        <table className="w-full min-w-[420px] border-collapse text-sm">
-                          <thead>
-                            <tr className="bg-neutral-50">
-                              <th className="border-b border-l border-black/10 px-3 py-3 text-right font-semibold">اللون / المقاس</th>
-                              {displaySizes.map(size => (
-                                <th key={size} className="border-b border-l border-black/10 px-3 py-3 text-center font-semibold">
-                                  {size === "-" ? "مقاس موحد" : size}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {displayColors.map(color => (
-                              <tr key={color}>
-                                <th className="border-b border-l border-black/10 px-3 py-3 text-right font-medium">
-                                  {color === "-" ? "لون موحد" : color}
-                                </th>
-                                {displaySizes.map(size => {
-                                  const key = `${color}|${size}`
-                                  const value = Number(form.variantStock[key] ?? 0)
-                                  return (
-                                    <td key={key} className="border-b border-black/10 p-2">
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        value={value}
-                                        aria-label={`مخزون ${color === "-" ? "اللون الموحد" : color} ${size === "-" ? "بمقاس موحد" : `مقاس ${size}`}`}
-                                        onChange={e => setForm({
-                                          ...form,
-                                          variantStock: {
-                                            ...form.variantStock,
-                                            [key]: Math.max(0, Number(e.target.value || 0))
-                                          }
-                                        })}
-                                        className={`w-full rounded-lg border px-3 py-2.5 text-center font-semibold outline-none ${value === 0 ? "border-red-200 bg-red-50" : "border-black/10 bg-white"}`}
-                                      />
-                                      {value === 0 && <span className="mt-1 block text-center text-[10px] text-red-500">نفد</span>}
-                                    </td>
-                                  )
-                                })}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      <p className="mt-3 text-[11px] leading-5 text-gray-400">
-                        الكمية الإجمالية للمنتج ستتحسب تلقائيًا من مجموع الخانات. عند طلب العميل لونًا ومقاسًا معينًا، سيتم خصم الكمية من هذه الخانة فقط.
-                      </p>
-                    </div>
-                  )
-                })() : (
-                  <div className="rounded-xl border border-dashed border-black/10 bg-neutral-50 p-4 text-center">
-                    <p className="text-sm font-medium text-gray-600">جدول المخزون لسه مش متعمل</p>
-                    <p className="mt-1 text-xs text-gray-400">اكتب الألوان والمقاسات بالأعلى ثم اضغط «إنشاء جدول المخزون».</p>
-                  </div>
-                )}
-              </div>
-
-              <textarea
-                placeholder="الوصف"
-                rows={3}
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                className="w-full resize-none rounded-xl border border-black/10 px-4 py-2.5 text-sm outline-none"
-              />
-
-              {/* جدول المقاسات */}
-              <div className="rounded-xl border border-black/10 p-3">
-                <div className="mb-3 flex items-center justify-between">
-                  <p className="text-sm font-medium">جدول المقاسات (اختياري)</p>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={addSizeChartColumn}
-                      className="rounded-lg border border-black/10 px-2 py-1 text-xs"
-                    >
-                      + عمود
-                    </button>
-                    <button
-                      type="button"
-                      onClick={addSizeChartRow}
-                      className="rounded-lg border border-black/10 px-2 py-1 text-xs"
-                    >
-                      + صف
-                    </button>
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-max border-collapse text-xs">
-                    <thead>
-                      <tr>
-                        {form.sizeChartColumns.map((col, colIndex) => (
-                          <th key={colIndex} className="p-1">
-                            <div className="flex items-center gap-1">
-                              <input
-                                value={col}
-                                onChange={(e) => setColumnAt(colIndex, e.target.value)}
-                                placeholder="اسم العمود"
-                                className="w-24 rounded-lg border border-black/10 px-2 py-1.5 text-xs font-medium outline-none"
-                              />
-                              {form.sizeChartColumns.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => removeSizeChartColumn(colIndex)}
-                                  className="text-gray-400 hover:text-red-500"
-                                  aria-label="حذف العمود"
-                                >
-                                  <X size={13} />
-                                </button>
-                              )}
-                            </div>
-                          </th>
-                        ))}
-                        <th className="w-6" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {form.sizeChartRows.map((row, rowIndex) => (
-                        <tr key={rowIndex}>
-                          {row.map((cell, colIndex) => (
-                            <td key={colIndex} className="p-1">
-                              <input
-                                value={cell}
-                                onChange={(e) =>
-                                  setCellAt(rowIndex, colIndex, e.target.value)
-                                }
-                                className="w-24 rounded-lg border border-black/10 px-2 py-1.5 text-xs outline-none"
-                              />
-                            </td>
-                          ))}
-                          <td className="p-1">
-                            {form.sizeChartRows.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => removeSizeChartRow(rowIndex)}
-                                className="text-gray-400 hover:text-red-500"
-                                aria-label="حذف الصف"
-                              >
-                                <X size={13} />
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <p className="mt-2 text-[11px] text-gray-400">
-                  اسيبي الصفوف فاضية لو مش عايزة تظهري جدول المقاسات في صفحة المنتج.
-                </p>
-              </div>
-
-              <textarea
-                placeholder="تفاصيل الخامة (مثال: قماش كريب فاخر، لا يشف، مناسب لكل الفصول)"
-                rows={2}
-                value={form.materialDetails}
-                onChange={(e) => setForm({ ...form, materialDetails: e.target.value })}
-                className="w-full resize-none rounded-xl border border-black/10 px-4 py-2.5 text-sm outline-none"
-              />
-
-              <textarea
-                placeholder={"تعليمات العناية (سطر لكل تعليمة، مثال:\nغسيل يدوي بماء بارد\nلا تستخدمي مبيض\nكوي على حرارة منخفضة"}
-                rows={3}
-                value={form.careInstructions}
-                onChange={(e) => setForm({ ...form, careInstructions: e.target.value })}
-                className="w-full resize-none rounded-xl border border-black/10 px-4 py-2.5 text-sm outline-none"
-              />
-
-              <div className="flex flex-wrap gap-5 text-sm">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={form.featured}
-                    onChange={(e) =>
-                      setForm({ ...form, featured: e.target.checked })
-                    }
-                  />
-                  مميز
-                </label>
-
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={form.bestSeller}
-                    onChange={(e) =>
-                      setForm({ ...form, bestSeller: e.target.checked })
-                    }
-                  />
-                  الأكثر مبيعًا
-                </label>
-
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={form.active}
-                    onChange={(e) =>
-                      setForm({ ...form, active: e.target.checked })
-                    }
-                  />
-                  ظاهر في المتجر
-                </label>
-              </div>
-            </div>
-
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="flex-1 rounded-full border border-black/10 py-3 text-sm"
-              >
-                إلغاء
-              </button>
-
-              <button
-                type="submit"
-                disabled={saving}
-                className="flex-1 rounded-full bg-black py-3 text-sm text-white disabled:opacity-60"
-              >
-                {saving ? "جارِ الحفظ..." : "حفظ"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+          <div className="shrink-0 border-t border-black/10 bg-white px-5 py-4 sm:px-6"><div className="flex gap-2">{step>1&&<button type="button" onClick={goBack} className="flex items-center justify-center gap-1 rounded-xl border border-black/10 px-4 py-3 text-sm"><ChevronRight size={16}/> السابق</button>}<button type="button" onClick={()=>setShowForm(false)} className="rounded-xl border border-black/10 px-4 py-3 text-sm">إلغاء</button>{step<4?<button type="button" onClick={goNext} className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-black py-3 text-sm text-white">التالي <ChevronLeft size={16}/></button>:<button type="submit" disabled={saving} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-black py-3 text-sm text-white disabled:opacity-60"><Check size={16}/>{saving?"جارِ الحفظ...":form.id?"حفظ التعديلات":"حفظ المنتج"}</button>}</div></div>
+        </form>
+      </div>}
     </main>
   )
 }
