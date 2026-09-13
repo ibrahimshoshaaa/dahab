@@ -225,6 +225,28 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── Best sellers ── */}
+      {products.some((p) => p.bestSeller) && (
+        <section className="mx-auto max-w-7xl px-5 py-20">
+          <div className="mb-10 flex items-end justify-between">
+            <div><p className="mb-3 text-[11px] tracking-[0.3em] text-[var(--brand)]">DAHAB FAVORITES</p><h2 className="text-3xl font-light sm:text-4xl">الأكثر مبيعًا</h2><p className="mt-3 text-sm text-gray-500">اختيارات بتحبها عميلات دهب.</p></div>
+            <Link href="/products" className="hidden text-sm sm:block">كل المنتجات ←</Link>
+          </div>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            {products.filter((p)=>p.bestSeller).slice(0,4).map((product)=><Link key={product.slug} href={`/products/${product.slug}`} className="group block"><div className="relative aspect-[3/4] overflow-hidden bg-[var(--surface)]"><ProductCardImages images={product.images?.length?product.images:[product.image]} alt={product.name} imgClassName="h-full w-full object-cover transition duration-700 group-hover:scale-105"/><span className="absolute right-3 top-3 bg-white px-3 py-1.5 text-[10px]">الأكثر مبيعًا</span></div><div className="pt-4"><h3 className="text-sm">{product.name}</h3><p className="mt-2 text-sm font-medium">{product.price.toLocaleString("ar-EG")} ج.م</p></div></Link>)}
+          </div>
+        </section>
+      )}
+
+      {/* ── Brand promise ── */}
+      <section className="bg-[var(--ink)] px-5 py-16 text-white">
+        <div className="mx-auto grid max-w-5xl gap-8 text-center md:grid-cols-3 md:text-right">
+          <div><p className="text-[11px] tracking-[0.25em] text-[var(--brand-soft)]">DAHAB QUALITY</p><h3 className="mt-2 text-xl font-light">تفاصيل تستحق الاختيار</h3><p className="mt-2 text-sm leading-7 text-white/60">تصميمات مختارة بعناية عشان كل قطعة تحسسك بالفرق.</p></div>
+          <div><p className="text-[11px] tracking-[0.25em] text-[var(--brand-soft)]">EASY ORDER</p><h3 className="mt-2 text-xl font-light">اطلبيها في دقائق</h3><p className="mt-2 text-sm leading-7 text-white/60">اختاري، أضيفي للسلة، وسيبي علينا الباقي.</p></div>
+          <div><p className="text-[11px] tracking-[0.25em] text-[var(--brand-soft)]">MADE FOR YOU</p><h3 className="mt-2 text-xl font-light">أناقتك بطابع دهب</h3><p className="mt-2 text-sm leading-7 text-white/60">عبايات وإكسسوارات تجمع بين البساطة والفخامة.</p></div>
+        </div>
+      </section>
+
       {/* ── Accessories ── */}
       <section id="accessories" className="mx-auto max-w-7xl px-5 py-20">
 

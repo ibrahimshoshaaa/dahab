@@ -233,6 +233,19 @@ export async function updateCoupon(id:number,payload:Record<string,unknown>){ret
 export async function deleteCoupon(id:number){return adminFetch(`/api/admin/coupons/${id}`,{method:"DELETE"})}
 export async function validateCoupon(code:string,subtotal:number){const res=await fetch(`${API_URL}/api/coupons/validate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code,subtotal})});const data=await res.json();if(!res.ok||!data.success)throw new Error(data.message||"الكوبون غير صالح");return data as {coupon:{code:string;type:string;value:number};discount:number;total:number}}
 
+// ---------- reviews ----------
+export type ProductReview = { id:number; product_id:number; customer_name:string; rating:number; comment:string; status?:string; created_at:string }
+export async function fetchProductReviews(productId:number){const res=await fetch(`${API_URL}/api/products/${productId}/reviews`,{cache:"no-store"});const data=await res.json();if(!res.ok||!data.success)throw new Error(data.message||"تعذر جلب التقييمات");return data as {reviews:ProductReview[];average:number;count:number}}
+export async function submitProductReview(productId:number,payload:{customer_name:string;rating:number;comment:string}){const res=await fetch(`${API_URL}/api/products/${productId}/reviews`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});const data=await res.json();if(!res.ok||!data.success)throw new Error(data.message||"تعذر إرسال التقييم");return data}
+export async function fetchAdminReviews(){const data=await adminFetch("/api/admin/reviews");return data.reviews as ProductReview[] & {product_name:string}[]}
+export async function updateReviewStatus(id:number,status:"pending"|"approved"|"hidden"){return adminFetch(`/api/admin/reviews/${id}`,{method:"PATCH",body:JSON.stringify({status})})}
+export async function deleteReview(id:number){return adminFetch(`/api/admin/reviews/${id}`,{method:"DELETE"})}
+
+// ---------- analytics ----------
+export async function trackEvent(event:{event_type:"page_view"|"product_view"|"add_to_cart"|"begin_checkout"|"purchase";product_id?:number;path?:string;metadata?:Record<string,unknown>}){try{let sid=typeof window!=="undefined"?localStorage.getItem("dahab-session-id"):null;if(!sid&&typeof window!=="undefined"){sid=crypto.randomUUID();localStorage.setItem("dahab-session-id",sid)};await fetch(`${API_URL}/api/analytics/events`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...event,session_id:sid})})}catch{}}
+export type AnalyticsSummary={days:number;counts:Record<string,number>;uniqueSessions:number;topProducts:{product_id:number;name:string;views:number}[]}
+export async function fetchAnalytics(days:number){const data=await adminFetch(`/api/admin/analytics?days=${days}`);return data as AnalyticsSummary}
+
 // ---------- settings ----------
 
 export type SiteSettings = Record<string, string>

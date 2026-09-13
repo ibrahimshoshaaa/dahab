@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import {
   ArrowRight,
@@ -13,7 +13,7 @@ import {
   FileText,
 } from "lucide-react"
 import { useCart } from "../context/CartContext"
-import { createOrder, validateCoupon } from "../lib/api"
+import { createOrder, validateCoupon, trackEvent } from "../lib/api"
 import SiteHeader from "../components/SiteHeader"
 import StoreFooter from "../components/StoreFooter"
 
@@ -68,6 +68,10 @@ export default function CheckoutPage() {
   const [couponError, setCouponError] = useState("")
   const [couponLoading, setCouponLoading] = useState(false)
 
+  useEffect(() => {
+    if (cart.length) trackEvent({event_type:"begin_checkout",path:"/checkout",metadata:{items:cart.length}})
+  }, [])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
@@ -107,6 +111,7 @@ export default function CheckoutPage() {
       setOrderId(orderId)
       setTrackingCode(trackingCode)
       setOrderTotal(Math.max(0, cartTotal - discount))
+      trackEvent({event_type:"purchase",path:"/checkout",metadata:{order_id:orderId,total:Math.max(0,cartTotal-discount)}} as any)
       setSubmitted(true)
       clearCart()
     } catch (err) {

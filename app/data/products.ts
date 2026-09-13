@@ -23,6 +23,7 @@ export type Product = {
   careInstructions?: string
   stock?: number
   lowStockThreshold?: number
+  variantStock?: Record<string, number>
 }
 
 export const products: Product[] = [

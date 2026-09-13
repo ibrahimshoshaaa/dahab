@@ -12,9 +12,10 @@ import {
   Minus,
   Check,
   Sparkles,
+  Star,
 } from "lucide-react"
 import { type Product } from "../../data/products"
-import { fetchProductBySlug, fetchProducts } from "../../lib/api"
+import { fetchProductBySlug, fetchProducts, fetchProductReviews, submitProductReview, trackEvent, type ProductReview } from "../../lib/api"
 import { useCart } from "../../context/CartContext"
 import { useFavorites } from "../../context/FavoritesContext"
 import SiteHeader from "../../components/SiteHeader"
@@ -39,6 +40,13 @@ export default function ProductDetails({
   const [quantity, setQuantity] = useState(1)
   const [added, setAdded] = useState(false)
   const [activeImage, setActiveImage] = useState(0)
+  const [reviews, setReviews] = useState<ProductReview[]>([])
+  const [reviewAverage, setReviewAverage] = useState(0)
+  const [reviewName, setReviewName] = useState("")
+  const [reviewComment, setReviewComment] = useState("")
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewMessage, setReviewMessage] = useState("")
+  const [reviewSubmitting, setReviewSubmitting] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -51,6 +59,10 @@ export default function ProductDetails({
       setActiveImage(0)
       setAdded(false)
       setLoading(false)
+      if (result) {
+        fetchProductReviews(result.id).then((data) => { if (active) { setReviews(data.reviews); setReviewAverage(data.average) } }).catch(() => {})
+        trackEvent({event_type:"product_view",product_id:result.id,path:`/products/${slug}`})
+      }
     })
 
     fetchProducts().then((all) => {
@@ -64,6 +76,10 @@ export default function ProductDetails({
   }, [slug])
 
   const galleryImages = product?.images?.length ? product.images : product ? [product.image] : []
+
+  const variantKey = product ? `${selectedColor || "-"}|${selectedSize || "-"}` : ""
+  const hasVariantStock = !!product?.variantStock && Object.keys(product.variantStock).length > 0
+  const availableStock = product ? (hasVariantStock ? Number(product.variantStock?.[variantKey] ?? 0) : Number(product.stock ?? 0)) : 0
 
   const galleryTouchStartX = useRef<number | null>(null)
 
@@ -120,15 +136,16 @@ export default function ProductDetails({
   }
 
   function handleAddToCart() {
-    if (product?.stock !== undefined && product.stock <= 0) return
+    if (availableStock <= 0) return
     addToCart(
       product!,
-      quantity,
+      Math.min(quantity, availableStock),
       selectedColor || undefined,
       selectedSize || undefined
     )
 
     setAdded(true)
+    trackEvent({event_type:"add_to_cart",product_id:product.id,path:`/products/${slug}`,metadata:{quantity:Math.min(quantity,availableStock),color:selectedColor,size:selectedSize}})
   }
 
   function handleColorSelect(color: string) {
@@ -320,11 +337,9 @@ export default function ProductDetails({
 
             <div className="mt-7">
 
-              {product.stock !== undefined && (
-                <div className={`mb-4 rounded-2xl px-4 py-3 text-sm ${product.stock <= 0 ? "bg-red-50 text-red-700" : product.stock <= (product.lowStockThreshold ?? 5) ? "bg-amber-50 text-amber-700" : "bg-[var(--bg)] text-gray-600"}`}>
-                  {product.stock <= 0 ? "هذا المنتج غير متوفر حاليًا" : product.stock <= (product.lowStockThreshold ?? 5) ? `متبقي ${product.stock} فقط — اطلبي الآن` : "متوفر وجاهز للطلب"}
+              <div className={`mb-4 rounded-2xl px-4 py-3 text-sm ${availableStock <= 0 ? "bg-red-50 text-red-700" : availableStock <= (product.lowStockThreshold ?? 5) ? "bg-amber-50 text-amber-700" : "bg-[var(--bg)] text-gray-600"}`}>
+                  {availableStock <= 0 ? "هذا الاختيار غير متوفر حاليًا" : availableStock <= (product.lowStockThreshold ?? 5) ? `متبقي ${availableStock} فقط — اطلبي الآن` : `متوفر — ${availableStock} قطعة`}
                 </div>
-              )}
 
               <h3 className="mb-3 font-semibold">
                 الكمية
@@ -348,8 +363,8 @@ export default function ProductDetails({
                   </span>
 
                   <button
-                    onClick={() => setQuantity((value) => Math.min(product.stock ?? 99, value + 1))}
-                    disabled={product.stock !== undefined && product.stock <= quantity}
+                    onClick={() => setQuantity((value) => Math.min(availableStock, value + 1))}
+                    disabled={availableStock <= quantity}
                     className="flex h-14 w-12 items-center justify-center disabled:opacity-30"
                   >
                     <Plus size={17} />
@@ -368,19 +383,19 @@ export default function ProductDetails({
                 ) : (
                   <button
                     onClick={handleAddToCart}
-                    disabled={product.stock !== undefined && product.stock <= 0}
+                    disabled={availableStock <= 0}
                     className="flex flex-1 items-center justify-center gap-3 rounded-full bg-black py-4 text-white transition hover:bg-[var(--brand-dark)] disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <ShoppingBag size={20} />
-                    {product.stock !== undefined && product.stock <= 0 ? "غير متوفر" : "إضافة للسلة"}
+                    {availableStock <= 0 ? "غير متوفر" : "إضافة للسلة"}
                   </button>
                 )}
 
               </div>
 
               <Link
-                href={product.stock !== undefined && product.stock <= 0 ? "#" : "/checkout"}
-                onClick={(e) => { if (product.stock !== undefined && product.stock <= 0) e.preventDefault(); else handleAddToCart() }}
+                href={availableStock <= 0 ? "#" : "/checkout"}
+                onClick={(e) => { if (availableStock <= 0) e.preventDefault(); else handleAddToCart() }}
                 className="mt-3 flex items-center justify-center gap-2 rounded-full bg-[var(--brand-dark)] py-4 text-white transition hover:bg-black"
               >
                 <Sparkles size={18} />
@@ -498,6 +513,21 @@ export default function ProductDetails({
           </div>
 
         </div>
+
+        {/* التقييمات */}
+        <section className="mt-16 border-t pt-10">
+          <div className="grid gap-8 lg:grid-cols-[.7fr_1.3fr]">
+            <div className="rounded-3xl bg-white p-6">
+              <p className="text-xs tracking-[.2em] text-[var(--brand)]">CUSTOMER LOVE</p>
+              <h2 className="mt-2 text-2xl font-light">تقييمات عميلات دهب</h2>
+              <div className="mt-6 flex items-center gap-3"><span className="text-4xl font-semibold">{reviewAverage.toFixed(1)}</span><div><div className="flex text-[var(--brand)]">{[1,2,3,4,5].map(i=><Star key={i} size={17} className={i<=Math.round(reviewAverage)?"fill-current":""}/>)}</div><p className="mt-1 text-xs text-gray-400">{reviews.length} تقييم معتمد</p></div></div>
+              <div className="mt-6 border-t pt-5"><p className="text-sm font-medium">شاركينا رأيك</p><input value={reviewName} onChange={e=>setReviewName(e.target.value)} placeholder="اسمك" className="mt-3 w-full rounded-xl border border-black/10 px-3 py-3 text-sm outline-none"/><div className="mt-3 flex gap-1">{[1,2,3,4,5].map(i=><button type="button" key={i} onClick={()=>setReviewRating(i)} aria-label={`${i} نجوم`}><Star size={22} className={i<=reviewRating?"fill-[var(--brand)] text-[var(--brand)]":"text-gray-300"}/></button>)}</div><textarea value={reviewComment} onChange={e=>setReviewComment(e.target.value)} placeholder="اكتبي رأيك في المنتج..." rows={3} className="mt-3 w-full resize-none rounded-xl border border-black/10 px-3 py-3 text-sm outline-none"/><button type="button" disabled={reviewSubmitting} onClick={async()=>{setReviewSubmitting(true);setReviewMessage("");try{await submitProductReview(product.id,{customer_name:reviewName,rating:reviewRating,comment:reviewComment});setReviewName("");setReviewComment("");setReviewMessage("تم إرسال تقييمك، وهيظهر بعد المراجعة ❤️")}catch(e){setReviewMessage(e instanceof Error?e.message:"تعذر إرسال التقييم")}finally{setReviewSubmitting(false)}}} className="mt-3 w-full rounded-full bg-black py-3 text-sm text-white disabled:opacity-50">{reviewSubmitting?"جارِ الإرسال...":"إرسال التقييم"}</button>{reviewMessage&&<p className="mt-3 text-center text-xs text-gray-500">{reviewMessage}</p>}</div>
+            </div>
+            <div className="space-y-3">
+              {reviews.length?reviews.map(r=><article key={r.id} className="rounded-2xl border border-black/5 bg-white p-5"><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-medium">{r.customer_name}</p><p className="mt-1 text-[11px] text-gray-400">{new Date(r.created_at).toLocaleDateString("ar-EG")}</p></div><div className="flex text-[var(--brand)]">{[1,2,3,4,5].map(i=><Star key={i} size={14} className={i<=r.rating?"fill-current":""}/>)}</div></div><p className="mt-4 text-sm leading-7 text-gray-600">{r.comment}</p></article>):<div className="rounded-2xl bg-white p-10 text-center text-sm text-gray-400">لسه مفيش تقييمات معتمدة. كوني أول واحدة تسيبي رأيك ❤️</div>}
+            </div>
+          </div>
+        </section>
 
         {/* منتجات قد تعجبك */}
 

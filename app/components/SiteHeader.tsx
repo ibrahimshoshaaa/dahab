@@ -1,11 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { Search, Heart, ShoppingBag, Menu, X, ArrowLeft } from "lucide-react"
 import { useCart } from "../context/CartContext"
 import { useFavorites } from "../context/FavoritesContext"
-import { fetchProducts, fetchSettings, type ApiProduct } from "../lib/api"
+import { fetchProducts, fetchSettings, trackEvent, type ApiProduct } from "../lib/api"
 import SiteLogo from "./SiteLogo"
 
 const DEFAULT_ANNOUNCEMENT = ""
@@ -23,10 +24,12 @@ export default function SiteHeader() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [products, setProducts] = useState<ApiProduct[]>([])
+  const pathname = usePathname()
   const { cartCount, mounted } = useCart()
   const { favoritesCount, mounted: favoritesMounted } = useFavorites()
 
   useEffect(() => {
+    trackEvent({event_type:"page_view",path:pathname})
     fetchSettings().then((data) => { if (data.announcement_bar) setAnnouncement(data.announcement_bar) })
   }, [])
 

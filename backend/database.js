@@ -63,6 +63,7 @@ async function initDb() {
       care_instructions TEXT NOT NULL DEFAULT '',
       stock INTEGER NOT NULL DEFAULT 20,
       low_stock_threshold INTEGER NOT NULL DEFAULT 5,
+      variant_stock TEXT NOT NULL DEFAULT '{}',
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -95,6 +96,27 @@ async function initDb() {
 
     CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_tracking_code
     ON orders(tracking_code);
+
+    CREATE TABLE IF NOT EXISTS product_reviews (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER NOT NULL,
+      customer_name TEXT NOT NULL,
+      rating INTEGER NOT NULL,
+      comment TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS analytics_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      event_type TEXT NOT NULL,
+      product_id INTEGER,
+      path TEXT,
+      session_id TEXT,
+      metadata TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
   `)
 
   // migrate: add new columns to a products table created before this update
@@ -107,6 +129,7 @@ async function initDb() {
     ["care_instructions", "ALTER TABLE products ADD COLUMN care_instructions TEXT NOT NULL DEFAULT ''"],
     ["stock", "ALTER TABLE products ADD COLUMN stock INTEGER NOT NULL DEFAULT 20"],
     ["low_stock_threshold", "ALTER TABLE products ADD COLUMN low_stock_threshold INTEGER NOT NULL DEFAULT 5"],
+    ["variant_stock", "ALTER TABLE products ADD COLUMN variant_stock TEXT NOT NULL DEFAULT '{}'"],
   ]
   for (const [column, sql] of migrations) {
     if (!existingColumns.has(column)) {

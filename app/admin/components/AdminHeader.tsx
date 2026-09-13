@@ -14,6 +14,8 @@ const navItems = [
   { href: "/admin/reports", label: "التقارير" },
   { href: "/admin/coupons", label: "العروض" },
   { href: "/admin/notifications", label: "الإشعارات" },
+  { href: "/admin/reviews", label: "التقييمات" },
+  { href: "/admin/analytics", label: "تحليلات العملاء" },
   { href: "/admin/homepage", label: "الصفحة الرئيسية" },
   { href: "/admin/pages", label: "الصفحات الثابتة" },
   { href: "/admin/theme", label: "الشكل العام" },

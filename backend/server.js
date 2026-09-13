@@ -73,6 +73,7 @@ function parseProduct(row) {
     active: !!row.active,
     stock: Number(row.stock ?? 0),
     lowStockThreshold: Number(row.low_stock_threshold ?? 5),
+    variantStock: safeJsonParse(row.variant_stock, {}),
   }
 }
 
@@ -145,7 +146,7 @@ app.post("/api/admin/products", requireAdmin, async (req, res) => {
     const {
       name, category, price, oldPrice, image, images, badge, colors, sizes, description,
       featured, bestSeller, active, sizeChart, materialDetails, careInstructions,
-      stock, lowStockThreshold,
+      stock, lowStockThreshold, variantStock,
     } = req.body || {}
     const imageList = Array.isArray(images) ? images.filter(Boolean) : []
     const mainImage = image || imageList[0]
@@ -156,14 +157,15 @@ app.post("/api/admin/products", requireAdmin, async (req, res) => {
     const exists = await db.execute({ sql: "SELECT id FROM products WHERE slug = ?", args: [slug] })
     if (exists.rows[0]) slug = `${slug}-${Date.now()}`
     const result = await db.execute({
-      sql: `INSERT INTO products (slug,name,category,price,old_price,image,images,badge,colors,sizes,description,featured,best_seller,active,size_chart,material_details,care_instructions,stock,low_stock_threshold)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      sql: `INSERT INTO products (slug,name,category,price,old_price,image,images,badge,colors,sizes,description,featured,best_seller,active,size_chart,material_details,care_instructions,stock,low_stock_threshold,variant_stock)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       args: [slug, name, category, Number(price), oldPrice ? Number(oldPrice) : null, mainImage,
              JSON.stringify(imageList.length ? imageList : [mainImage]), badge || null,
              JSON.stringify(colors || []), JSON.stringify(sizes || []), description || "",
              featured ? 1 : 0, bestSeller ? 1 : 0, active === false ? 0 : 1,
              JSON.stringify(sizeChart || {}), materialDetails || "", careInstructions || "",
-             Math.max(0, Number(stock ?? 20)), Math.max(0, Number(lowStockThreshold ?? 5))]
+             Math.max(0, Number(stock ?? 20)), Math.max(0, Number(lowStockThreshold ?? 5)),
+             JSON.stringify(variantStock && typeof variantStock === "object" ? variantStock : {})]
     })
     res.status(201).json({ success: true, id: Number(result.lastInsertRowid), slug })
   } catch (error) {
@@ -181,12 +183,12 @@ app.put("/api/admin/products/:id", requireAdmin, async (req, res) => {
     const {
       name, slug, category, price, oldPrice, image, images, badge, colors, sizes, description,
       featured, bestSeller, active, sizeChart, materialDetails, careInstructions,
-      stock, lowStockThreshold,
+      stock, lowStockThreshold, variantStock,
     } = req.body || {}
     const imageList = Array.isArray(images) ? images.filter(Boolean) : undefined
     const mainImage = image ?? imageList?.[0]
     await db.execute({
-      sql: `UPDATE products SET slug=?,name=?,category=?,price=?,old_price=?,image=?,images=?,badge=?,colors=?,sizes=?,description=?,featured=?,best_seller=?,active=?,size_chart=?,material_details=?,care_instructions=?,stock=?,low_stock_threshold=? WHERE id=?`,
+      sql: `UPDATE products SET slug=?,name=?,category=?,price=?,old_price=?,image=?,images=?,badge=?,colors=?,sizes=?,description=?,featured=?,best_seller=?,active=?,size_chart=?,material_details=?,care_instructions=?,stock=?,low_stock_threshold=?,variant_stock=? WHERE id=?`,
       args: [slug ?? e.slug, name ?? e.name, category ?? e.category,
              price !== undefined ? Number(price) : e.price,
              oldPrice !== undefined ? (oldPrice ? Number(oldPrice) : null) : e.old_price,
@@ -204,6 +206,7 @@ app.put("/api/admin/products/:id", requireAdmin, async (req, res) => {
              careInstructions !== undefined ? careInstructions : e.care_instructions,
              stock !== undefined ? Math.max(0, Number(stock)) : Number(e.stock ?? 0),
              lowStockThreshold !== undefined ? Math.max(0, Number(lowStockThreshold)) : Number(e.low_stock_threshold ?? 5),
+             variantStock !== undefined ? JSON.stringify(variantStock && typeof variantStock === "object" ? variantStock : {}) : (e.variant_stock || "{}"),
              id]
     })
     res.json({ success: true })
@@ -241,6 +244,68 @@ app.delete("/api/admin/products/:id", requireAdmin, async (req, res) => {
     console.error(error)
     res.status(500).json({ success: false, message: "حدث خطأ أثناء حذف المنتج" })
   }
+})
+
+// ---------- reviews ----------
+app.get("/api/products/:id/reviews", async (req, res) => {
+  try {
+    const productId = Number(req.params.id)
+    if (!Number.isInteger(productId) || productId <= 0) return res.status(400).json({ success:false, message:"معرف المنتج غير صحيح" })
+    const result = await db.execute({ sql:"SELECT id,product_id,customer_name,rating,comment,created_at FROM product_reviews WHERE product_id=? AND status='approved' ORDER BY id DESC", args:[productId] })
+    const rows = result.rows
+    const average = rows.length ? rows.reduce((sum,r)=>sum+Number(r.rating),0)/rows.length : 0
+    res.json({ success:true, reviews:rows, average, count:rows.length })
+  } catch(error) { console.error(error); res.status(500).json({success:false,message:"تعذر جلب التقييمات"}) }
+})
+app.post("/api/products/:id/reviews", async (req, res) => {
+  try {
+    const productId=Number(req.params.id), name=String(req.body?.customer_name||"").trim(), comment=String(req.body?.comment||"").trim(), rating=Number(req.body?.rating)
+    if(!Number.isInteger(productId)||!name||name.length>80||!Number.isInteger(rating)||rating<1||rating>5||!comment||comment.length>500) return res.status(400).json({success:false,message:"من فضلك أدخل تقييمًا صحيحًا"})
+    const product=await db.execute({sql:"SELECT id FROM products WHERE id=? AND active=1",args:[productId]}); if(!product.rows[0]) return res.status(404).json({success:false,message:"المنتج غير موجود"})
+    await db.execute({sql:"INSERT INTO product_reviews(product_id,customer_name,rating,comment,status) VALUES(?,?,?,?,?)",args:[productId,name,rating,comment,"pending"]})
+    res.status(201).json({success:true,message:"تم إرسال تقييمك للمراجعة"})
+  } catch(error){console.error(error);res.status(500).json({success:false,message:"تعذر إرسال التقييم"})}
+})
+app.get("/api/admin/reviews", requireAdmin, async (req,res)=>{
+  try { const result=await db.execute("SELECT r.*,p.name AS product_name FROM product_reviews r LEFT JOIN products p ON p.id=r.product_id ORDER BY r.id DESC"); res.json({success:true,reviews:result.rows}) }
+  catch(error){console.error(error);res.status(500).json({success:false,message:"تعذر جلب التقييمات"})}
+})
+app.patch("/api/admin/reviews/:id", requireAdmin, async (req,res)=>{
+  try { const status=String(req.body?.status||""); if(!["pending","approved","hidden"].includes(status)) return res.status(400).json({success:false,message:"الحالة غير صحيحة"}); const r=await db.execute({sql:"UPDATE product_reviews SET status=? WHERE id=?",args:[status,Number(req.params.id)]}); if(!r.rowsAffected)return res.status(404).json({success:false,message:"التقييم غير موجود"}); res.json({success:true}) }
+  catch(error){console.error(error);res.status(500).json({success:false,message:"تعذر تحديث التقييم"})}
+})
+app.delete("/api/admin/reviews/:id", requireAdmin, async (req,res)=>{
+  try { const r=await db.execute({sql:"DELETE FROM product_reviews WHERE id=?",args:[Number(req.params.id)]}); if(!r.rowsAffected)return res.status(404).json({success:false,message:"التقييم غير موجود"});res.json({success:true}) }
+  catch(error){res.status(500).json({success:false,message:"تعذر حذف التقييم"})}
+})
+
+// ---------- analytics ----------
+app.post("/api/analytics/events", async (req,res)=>{
+  try {
+    const events=Array.isArray(req.body?.events)?req.body.events:[req.body]
+    const allowed=new Set(["page_view","product_view","add_to_cart","begin_checkout","purchase"])
+    for(const event of events.slice(0,20)){
+      const type=String(event?.event_type||""); if(!allowed.has(type)) continue
+      const productId=event?.product_id?Number(event.product_id):null
+      await db.execute({sql:"INSERT INTO analytics_events(event_type,product_id,path,session_id,metadata) VALUES(?,?,?,?,?)",args:[type,Number.isInteger(productId)?productId:null,String(event?.path||"").slice(0,300),String(event?.session_id||"").slice(0,120),JSON.stringify(event?.metadata||{})]})
+    }
+    res.json({success:true})
+  }catch(error){console.error(error);res.status(500).json({success:false,message:"تعذر تسجيل الإحصائية"})}
+})
+app.get("/api/admin/analytics", requireAdmin, async (req,res)=>{
+  try {
+    const days=Math.min(90,Math.max(1,Number(req.query?.days||30)))
+    const modifier=`-${days} days`
+    const events=await db.execute({sql:"SELECT event_type,product_id,path,session_id,created_at FROM analytics_events WHERE created_at>=datetime('now', ?) ORDER BY id DESC",args:[modifier]})
+    const counts={page_view:0,product_view:0,add_to_cart:0,begin_checkout:0,purchase:0}
+    for(const r of events.rows) counts[r.event_type]=(counts[r.event_type]||0)+1
+    const uniqueSessions=new Set(events.rows.map(r=>r.session_id).filter(Boolean)).size
+    const products=await db.execute({sql:"SELECT product_id,COUNT(*) AS views FROM analytics_events WHERE event_type='product_view' AND created_at>=datetime('now', ?) AND product_id IS NOT NULL GROUP BY product_id ORDER BY views DESC LIMIT 10",args:[modifier]})
+    const ids=products.rows.map(r=>Number(r.product_id)); let names=[]
+    if(ids.length){const rs=await db.execute(`SELECT id,name FROM products WHERE id IN (${ids.map(()=>'?').join(',')})`,ids); names=rs.rows}
+    const nameMap=Object.fromEntries(names.map(r=>[Number(r.id),r.name]))
+    res.json({success:true,days,counts,uniqueSessions,topProducts:products.rows.map(r=>({product_id:Number(r.product_id),name:nameMap[Number(r.product_id)]||"منتج",views:Number(r.views)}))})
+  }catch(error){console.error(error);res.status(500).json({success:false,message:"تعذر جلب الإحصائيات"})}
 })
 
 // ---------- coupons ----------
@@ -330,13 +395,24 @@ app.post("/api/orders", async (req, res) => {
 
     // Never trust product names/prices sent by the browser. Re-read the current catalog.
     for (const [productId, quantity] of quantities) {
-      const pr = await db.execute({ sql: "SELECT id,name,price,stock,active FROM products WHERE id = ?", args: [productId] })
+      const pr = await db.execute({ sql: "SELECT id,name,price,stock,active,variant_stock FROM products WHERE id = ?", args: [productId] })
       const product = pr.rows[0]
       if (!product || !product.active) return res.status(400).json({ success: false, message: "أحد المنتجات لم يعد متاحًا" })
-      if (Number(product.stock || 0) < quantity) {
+      const variantStock = safeJsonParse(product.variant_stock, {})
+      const matching = items.filter((item) => Number(item.product_id) === productId)
+      if (Object.keys(variantStock).length) {
+        const requested = new Map()
+        for (const item of matching) {
+          const key = `${item.selected_color || "-"}|${item.selected_size || "-"}`
+          requested.set(key, (requested.get(key) || 0) + Math.floor(Number(item.quantity)))
+        }
+        for (const [key, qty] of requested) {
+          const available = Number(variantStock[key] ?? 0)
+          if (available < qty) return res.status(400).json({ success:false, message:`الكمية غير متوفرة من ${product.name} (${key.replace("|"," / ")}). المتاح: ${available}` })
+        }
+      } else if (Number(product.stock || 0) < quantity) {
         return res.status(400).json({ success: false, message: `الكمية غير متوفرة من ${product.name}. المتاح: ${Number(product.stock || 0)}` })
       }
-      const matching = items.filter((item) => Number(item.product_id) === productId)
       for (const item of matching) {
         const qty = Math.floor(Number(item.quantity))
         normalizedItems.push({
@@ -388,14 +464,26 @@ app.post("/api/orders", async (req, res) => {
     }
 
     for (const [productId, quantity] of quantities) {
-      const updated = await db.execute({
-        sql: "UPDATE products SET stock=stock-? WHERE id=? AND stock>=?",
-        args: [quantity, productId, quantity],
-      })
-      if (updated.rowsAffected !== 1) {
-        return res.status(409).json({ success: false, message: "تغير المخزون أثناء إتمام الطلب، راجعي السلة وحاولي مرة أخرى" })
+      const current = await db.execute({sql:"SELECT stock,variant_stock FROM products WHERE id=?",args:[productId]})
+      const row=current.rows[0]
+      const variantStock=safeJsonParse(row?.variant_stock,{})
+      if(Object.keys(variantStock).length){
+        const matching=normalizedItems.filter(i=>i.product_id===productId)
+        for(const item of matching){
+          const key=`${item.selected_color || "-"}|${item.selected_size || "-"}`
+          const qty=Number(item.quantity)
+          const updatedVariant={...variantStock, [key]: Number(variantStock[key]||0)-qty}
+          if(updatedVariant[key] < 0) return res.status(409).json({success:false,message:"تغير المخزون أثناء إتمام الطلب، راجعي السلة وحاولي مرة أخرى"})
+          Object.assign(variantStock, updatedVariant)
+        }
+        const updated=await db.execute({sql:"UPDATE products SET stock=stock-?,variant_stock=? WHERE id=? AND stock>=?",args:[quantity,JSON.stringify(variantStock),productId,quantity]})
+        if(updated.rowsAffected!==1) return res.status(409).json({success:false,message:"تغير المخزون أثناء إتمام الطلب، راجعي السلة وحاولي مرة أخرى"})
+      } else {
+        const updated = await db.execute({sql:"UPDATE products SET stock=stock-? WHERE id=? AND stock>=?",args:[quantity,productId,quantity]})
+        if (updated.rowsAffected !== 1) return res.status(409).json({ success: false, message: "تغير المخزون أثناء إتمام الطلب، راجعي السلة وحاولي مرة أخرى" })
       }
     }
+    await db.execute({sql:"INSERT INTO analytics_events(event_type,path,session_id,metadata) VALUES(?,?,?,?,?)".replace("VALUES(?,?,?,?,?)","VALUES(?,?,?,?)"),args:["purchase","/checkout",null,JSON.stringify({order_id:orderId,total:finalTotal})]}).catch(()=>{})
 
     if (coupon) {
       await db.execute({ sql: "UPDATE coupons SET used_count=used_count+1 WHERE id=?", args: [coupon.id] })

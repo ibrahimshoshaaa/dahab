@@ -39,6 +39,7 @@ const emptyForm = {
   careInstructions: "",
   stock: "20",
   lowStockThreshold: "5",
+  variantStock: {} as Record<string, number>,
 }
 
 // ── ProductImageSlot: صورة واحدة برفع من الجهاز أو رابط ────────────────────────
@@ -188,6 +189,7 @@ export default function AdminProductsPage() {
       careInstructions: product.careInstructions || "",
       stock: String(product.stock ?? 0),
       lowStockThreshold: String(product.lowStockThreshold ?? 5),
+      variantStock: product.variantStock || {},
     })
     setShowForm(true)
   }
@@ -296,8 +298,9 @@ export default function AdminProductsPage() {
       sizeChart,
       materialDetails: form.materialDetails || undefined,
       careInstructions: form.careInstructions || undefined,
-      stock: Math.max(0, Number(form.stock || 0)),
+      stock: Object.keys(form.variantStock).length ? Object.values(form.variantStock).reduce((sum, value) => sum + Math.max(0, Number(value || 0)), 0) : Math.max(0, Number(form.stock || 0)),
       lowStockThreshold: Math.max(0, Number(form.lowStockThreshold || 0)),
+      variantStock: form.variantStock,
     }
 
     try {
@@ -540,6 +543,18 @@ export default function AdminProductsPage() {
                 onChange={(e) => setForm({ ...form, sizes: e.target.value })}
                 className="w-full rounded-xl border border-black/10 px-4 py-2.5 text-sm outline-none"
               />
+
+              <div className="rounded-2xl border border-black/10 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div><p className="text-sm font-medium">مخزون اللون والمقاس</p><p className="mt-1 text-[11px] text-gray-400">فعّليه للعبايات عشان كل لون ومقاس يبقى له كمية مستقلة.</p></div>
+                  <button type="button" onClick={() => {
+                    const colors=form.colors.split(",").map(x=>x.trim()).filter(Boolean); const sizes=form.sizes.split(",").map(x=>x.trim()).filter(Boolean);
+                    const keys=(colors.length?colors:["-"]).flatMap(c=>(sizes.length?sizes:["-"]).map(z=>`${c}|${z}`));
+                    setForm({...form,variantStock:Object.fromEntries(keys.map(k=>[k,Number(form.variantStock[k]??form.stock??0)]))})
+                  }} className="shrink-0 rounded-xl border border-black/10 px-3 py-2 text-xs">تكوين تلقائي</button>
+                </div>
+                {Object.keys(form.variantStock).length>0 ? <div className="grid grid-cols-2 gap-2">{Object.entries(form.variantStock).map(([key,value])=>{const [color,size]=key.split("|");return <label key={key} className="rounded-xl bg-[var(--bg)] p-3 text-xs"><span className="block text-gray-500">{color!=="-"?color:"عام"}{size!=="-"?` • ${size}`:""}</span><input type="number" min="0" value={value} onChange={e=>setForm({...form,variantStock:{...form.variantStock,[key]:Math.max(0,Number(e.target.value))}})} className="mt-2 w-full rounded-lg border border-black/10 bg-white px-2 py-2 outline-none"/></label>})}</div> : <p className="rounded-xl bg-neutral-50 p-3 text-xs text-gray-400">لم يتم تفعيل مخزون منفصل بعد.</p>}
+              </div>
 
               <textarea
                 placeholder="الوصف"
