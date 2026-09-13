@@ -123,7 +123,7 @@ export default function AdminPagesEditor() {
       <header className="border-b border-black/10 bg-white">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-5 py-5">
           <div className="font-serif text-2xl tracking-widest">
-            DAHAB <span className="text-sm text-gray-400">ADMIN</span>
+            DAHAB <span className="mx-2 text-gray-300">/</span><span className="text-sm text-gray-500">لوحة التحكم</span><span className="mr-1 text-xs text-gray-400">ADMIN</span>
           </div>
           <nav className="flex items-center gap-6 text-sm">
             <Link href="/admin/orders" className="text-gray-500">الطلبات</Link>
