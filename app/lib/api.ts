@@ -226,12 +226,12 @@ export async function fetchCustomerOrders(phone: string) {
 }
 
 // ---------- coupons ----------
-export type AdminCoupon = { id:number; code:string; type:"percent"|"fixed"; value:number; min_order:number; max_uses:number; used_count:number; expires_at:string|null; active:number }
+export type AdminCoupon = { id:number; code:string; type:"percent"|"fixed"; value:number; min_order:number; max_uses:number; used_count:number; expires_at:string|null; starts_at:string|null; max_discount:number|null; min_items:number; product_id:number|null; category:string|null; free_shipping:number; active:number }
 export async function fetchAdminCoupons(){const data=await adminFetch("/api/admin/coupons");return data.coupons as AdminCoupon[]}
 export async function createCoupon(payload:Record<string,unknown>){return adminFetch("/api/admin/coupons",{method:"POST",body:JSON.stringify(payload)})}
 export async function updateCoupon(id:number,payload:Record<string,unknown>){return adminFetch(`/api/admin/coupons/${id}`,{method:"PUT",body:JSON.stringify(payload)})}
 export async function deleteCoupon(id:number){return adminFetch(`/api/admin/coupons/${id}`,{method:"DELETE"})}
-export async function validateCoupon(code:string,subtotal:number){const res=await fetch(`${API_URL}/api/coupons/validate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code,subtotal})});const data=await res.json();if(!res.ok||!data.success)throw new Error(data.message||"الكوبون غير صالح");return data as {coupon:{code:string;type:string;value:number};discount:number;total:number}}
+export async function validateCoupon(code:string,subtotal:number,items?:{product_id:number;quantity:number;category?:string}[]){const res=await fetch(`${API_URL}/api/coupons/validate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code,subtotal,items})});const data=await res.json();if(!res.ok||!data.success)throw new Error(data.message||"الكوبون غير صالح");return data as {coupon:{code:string;type:string;value:number};discount:number;total:number}}
 
 // ---------- reviews ----------
 export type ProductReview = { id:number; product_id:number; customer_name:string; rating:number; comment:string; status?:string; created_at:string }

@@ -16,6 +16,7 @@ import { useCart } from "../context/CartContext"
 import { createOrder, validateCoupon, trackEvent } from "../lib/api"
 import SiteHeader from "../components/SiteHeader"
 import StoreFooter from "../components/StoreFooter"
+import { whatsappUrl } from "../lib/whatsapp"
 
 const governorates = [
   "القاهرة",
@@ -250,6 +251,12 @@ export default function CheckoutPage() {
               >
                 تتبع الطلب
               </Link>
+            )}
+
+            {trackingCode && (
+              <a href={whatsappUrl("201000000000", `مرحبًا دهب، أريد الاستفسار عن الطلب ${trackingCode}`)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 rounded-full border border-green-200 bg-green-50 px-8 py-4 text-sm text-green-700">
+                تواصل عبر واتساب
+              </a>
             )}
 
             <Link
@@ -577,7 +584,7 @@ export default function CheckoutPage() {
                 <p className="text-sm font-semibold">كود الخصم</p>
                 <div className="mt-3 flex gap-2">
                   <input value={couponCode} onChange={e=>{setCouponCode(e.target.value.toUpperCase());setCouponError("");setDiscount(0)}} placeholder="مثال: DAHAB10" className="min-w-0 flex-1 rounded-xl border border-black/10 px-3 py-3 text-sm uppercase outline-none"/>
-                  <button type="button" disabled={couponLoading||!couponCode.trim()} onClick={async()=>{setCouponLoading(true);setCouponError("");try{const r=await validateCoupon(couponCode,cartTotal);setDiscount(r.discount)}catch(e){setDiscount(0);setCouponError(e instanceof Error?e.message:"الكوبون غير صالح")}finally{setCouponLoading(false)}}} className="rounded-xl bg-black px-4 text-sm text-white disabled:opacity-50">{couponLoading?"...":"تطبيق"}</button>
+                  <button type="button" disabled={couponLoading||!couponCode.trim()} onClick={async()=>{setCouponLoading(true);setCouponError("");try{const r=await validateCoupon(couponCode,cartTotal,cart.map(i=>({product_id:i.id,quantity:i.quantity,category:i.category})));setDiscount(r.discount)}catch(e){setDiscount(0);setCouponError(e instanceof Error?e.message:"الكوبون غير صالح")}finally{setCouponLoading(false)}}} className="rounded-xl bg-black px-4 text-sm text-white disabled:opacity-50">{couponLoading?"...":"تطبيق"}</button>
                 </div>
                 {couponError&&<p className="mt-2 text-xs text-red-600">{couponError}</p>}
                 {discount>0&&<div className="mt-2 flex items-center justify-between gap-2 text-xs text-emerald-600"><span>تم تطبيق الخصم: {discount.toLocaleString("ar-EG")} جنيه</span><button type="button" onClick={()=>{setCouponCode("");setDiscount(0);setCouponError("")}} className="underline">إزالة</button></div>}

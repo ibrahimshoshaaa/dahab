@@ -544,16 +544,119 @@ export default function AdminProductsPage() {
                 className="w-full rounded-xl border border-black/10 px-4 py-2.5 text-sm outline-none"
               />
 
-              <div className="rounded-2xl border border-black/10 p-4">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div><p className="text-sm font-medium">مخزون اللون والمقاس</p><p className="mt-1 text-[11px] text-gray-400">فعّليه للعبايات عشان كل لون ومقاس يبقى له كمية مستقلة.</p></div>
-                  <button type="button" onClick={() => {
-                    const colors=form.colors.split(",").map(x=>x.trim()).filter(Boolean); const sizes=form.sizes.split(",").map(x=>x.trim()).filter(Boolean);
-                    const keys=(colors.length?colors:["-"]).flatMap(c=>(sizes.length?sizes:["-"]).map(z=>`${c}|${z}`));
-                    setForm({...form,variantStock:Object.fromEntries(keys.map(k=>[k,Number(form.variantStock[k]??form.stock??0)]))})
-                  }} className="shrink-0 rounded-xl border border-black/10 px-3 py-2 text-xs">تكوين تلقائي</button>
+              <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
+                <div className="mb-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-base font-semibold">مخزون كل لون ومقاس</p>
+                      <p className="mt-1 text-xs leading-5 text-gray-500">
+                        بعد كتابة الألوان والمقاسات اضغط «إنشاء جدول المخزون»، ثم اكتب الكمية أمام كل تركيبة.
+                        مثال: أسود × مقاس 2 = 8 قطع.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const colors = form.colors.split(",").map(x => x.trim()).filter(Boolean)
+                        const sizes = form.sizes.split(",").map(x => x.trim()).filter(Boolean)
+                        const next: Record<string, number> = {}
+                        if (colors.length && sizes.length) {
+                          colors.forEach(color => sizes.forEach(size => {
+                            const key = `${color}|${size}`
+                            next[key] = Number(form.variantStock[key] ?? 0)
+                          }))
+                        } else if (colors.length) {
+                          colors.forEach(color => {
+                            const key = `${color}|-`
+                            next[key] = Number(form.variantStock[key] ?? 0)
+                          })
+                        } else if (sizes.length) {
+                          sizes.forEach(size => {
+                            const key = `-|${size}`
+                            next[key] = Number(form.variantStock[key] ?? 0)
+                          })
+                        }
+                        setForm({ ...form, variantStock: next })
+                      }}
+                      className="shrink-0 rounded-xl bg-black px-3 py-2 text-xs font-medium text-white"
+                    >
+                      إنشاء جدول المخزون
+                    </button>
+                  </div>
                 </div>
-                {Object.keys(form.variantStock).length>0 ? <div className="grid grid-cols-2 gap-2">{Object.entries(form.variantStock).map(([key,value])=>{const [color,size]=key.split("|");return <label key={key} className="rounded-xl bg-[var(--bg)] p-3 text-xs"><span className="block text-gray-500">{color!=="-"?color:"عام"}{size!=="-"?` • ${size}`:""}</span><input type="number" min="0" value={value} onChange={e=>setForm({...form,variantStock:{...form.variantStock,[key]:Math.max(0,Number(e.target.value))}})} className="mt-2 w-full rounded-lg border border-black/10 bg-white px-2 py-2 outline-none"/></label>})}</div> : <p className="rounded-xl bg-neutral-50 p-3 text-xs text-gray-400">لم يتم تفعيل مخزون منفصل بعد.</p>}
+
+                {Object.keys(form.variantStock).length > 0 ? (() => {
+                  const colors = form.colors.split(",").map(x => x.trim()).filter(Boolean)
+                  const sizes = form.sizes.split(",").map(x => x.trim()).filter(Boolean)
+                  const displayColors = colors.length ? colors : ["-"]
+                  const displaySizes = sizes.length ? sizes : ["-"]
+                  const totalVariantStock = Object.values(form.variantStock).reduce((sum, value) => sum + Math.max(0, Number(value || 0)), 0)
+
+                  return (
+                    <div>
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-neutral-50 px-3 py-2">
+                        <span className="text-xs text-gray-600">إجمالي المخزون المحسوب</span>
+                        <strong className="text-sm">{totalVariantStock} قطعة</strong>
+                      </div>
+
+                      <div className="overflow-x-auto rounded-xl border border-black/10">
+                        <table className="w-full min-w-[420px] border-collapse text-sm">
+                          <thead>
+                            <tr className="bg-neutral-50">
+                              <th className="border-b border-l border-black/10 px-3 py-3 text-right font-semibold">اللون / المقاس</th>
+                              {displaySizes.map(size => (
+                                <th key={size} className="border-b border-l border-black/10 px-3 py-3 text-center font-semibold">
+                                  {size === "-" ? "مقاس موحد" : size}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {displayColors.map(color => (
+                              <tr key={color}>
+                                <th className="border-b border-l border-black/10 px-3 py-3 text-right font-medium">
+                                  {color === "-" ? "لون موحد" : color}
+                                </th>
+                                {displaySizes.map(size => {
+                                  const key = `${color}|${size}`
+                                  const value = Number(form.variantStock[key] ?? 0)
+                                  return (
+                                    <td key={key} className="border-b border-black/10 p-2">
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        value={value}
+                                        aria-label={`مخزون ${color === "-" ? "اللون الموحد" : color} ${size === "-" ? "بمقاس موحد" : `مقاس ${size}`}`}
+                                        onChange={e => setForm({
+                                          ...form,
+                                          variantStock: {
+                                            ...form.variantStock,
+                                            [key]: Math.max(0, Number(e.target.value || 0))
+                                          }
+                                        })}
+                                        className={`w-full rounded-lg border px-3 py-2.5 text-center font-semibold outline-none ${value === 0 ? "border-red-200 bg-red-50" : "border-black/10 bg-white"}`}
+                                      />
+                                      {value === 0 && <span className="mt-1 block text-center text-[10px] text-red-500">نفد</span>}
+                                    </td>
+                                  )
+                                })}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <p className="mt-3 text-[11px] leading-5 text-gray-400">
+                        الكمية الإجمالية للمنتج ستتحسب تلقائيًا من مجموع الخانات. عند طلب العميل لونًا ومقاسًا معينًا، سيتم خصم الكمية من هذه الخانة فقط.
+                      </p>
+                    </div>
+                  )
+                })() : (
+                  <div className="rounded-xl border border-dashed border-black/10 bg-neutral-50 p-4 text-center">
+                    <p className="text-sm font-medium text-gray-600">جدول المخزون لسه مش متعمل</p>
+                    <p className="mt-1 text-xs text-gray-400">اكتب الألوان والمقاسات بالأعلى ثم اضغط «إنشاء جدول المخزون».</p>
+                  </div>
+                )}
               </div>
 
               <textarea

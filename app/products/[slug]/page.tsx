@@ -566,6 +566,10 @@ export default function ProductDetails({
 
       </section>
 
+      <script type="application/ld+json" dangerouslySetInnerHTML={{__html: JSON.stringify({
+        "@context":"https://schema.org", "@type":"Product", name:product.name, description:product.description, image:galleryImages, sku:String(product.id), brand:{"@type":"Brand",name:"DAHAB"}, offers:{"@type":"Offer",price:product.price,priceCurrency:"EGP",availability:availableStock>0?"https://schema.org/InStock":"https://schema.org/OutOfStock",url:`${process.env.NEXT_PUBLIC_SITE_URL || "https://dahab-seven.vercel.app"}/products/${product.slug}`}, aggregateRating:reviews.length?{"@type":"AggregateRating",ratingValue:reviewAverage,bestRating:5,ratingCount:reviews.length}:undefined
+      })}} />
+
       <StoreFooter />
 
     </main>

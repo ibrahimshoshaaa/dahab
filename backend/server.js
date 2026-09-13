@@ -28,9 +28,24 @@ const app = express()
 const PORT = process.env.PORT || 4000
 const ADMIN_USER = process.env.ADMIN_USER || "admin"
 const ADMIN_PASS = process.env.ADMIN_PASS || "dahab123"
+if (process.env.NODE_ENV === "production" && (!process.env.ADMIN_USER || !process.env.ADMIN_PASS)) console.warn("WARNING: Set ADMIN_USER and ADMIN_PASS in production.")
 
-app.use(cors())
-app.use(express.json())
+const allowedOrigins = String(process.env.FRONTEND_ORIGIN || "*").split(",").map(s => s.trim()).filter(Boolean)
+app.use(cors({ origin: (origin, cb) => { if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)) return cb(null, true); return cb(new Error("Origin not allowed")); } }))
+app.use(express.json({ limit: "1mb" }))
+app.disable("x-powered-by")
+
+const rateBuckets = new Map()
+function rateLimit(key, limit, windowMs) {
+  return (req, res, next) => {
+    const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown").split(",")[0].trim()
+    const now = Date.now(); const bucketKey = `${key}:${ip}`; const old = rateBuckets.get(bucketKey)
+    if (!old || now - old.started > windowMs) rateBuckets.set(bucketKey, { started: now, count: 1 })
+    else { old.count += 1; if (old.count > limit) return res.status(429).json({ success:false, message:"محاولات كثيرة، حاولي مرة أخرى بعد قليل" }) }
+    next()
+  }
+}
+setInterval(() => { const cutoff=Date.now()-15*60*1000; for (const [k,v] of rateBuckets) if(v.started<cutoff) rateBuckets.delete(k) }, 5*60*1000).unref()
 
 const adminTokens = new Set()
 
@@ -90,7 +105,7 @@ app.get("/", (req, res) => {
 
 // ---------- admin auth ----------
 
-app.post("/api/admin/login", (req, res) => {
+app.post("/api/admin/login", rateLimit("login", 8, 10*60*1000), (req, res) => {
   const { username, password } = req.body || {}
   if (username !== ADMIN_USER || password !== ADMIN_PASS) {
     return res.status(401).json({ success: false, message: "بيانات الدخول غير صحيحة" })
@@ -280,7 +295,7 @@ app.delete("/api/admin/reviews/:id", requireAdmin, async (req,res)=>{
 })
 
 // ---------- analytics ----------
-app.post("/api/analytics/events", async (req,res)=>{
+app.post("/api/analytics/events", rateLimit("analytics", 120, 60*1000), async (req,res)=>{
   try {
     const events=Array.isArray(req.body?.events)?req.body.events:[req.body]
     const allowed=new Set(["page_view","product_view","add_to_cart","begin_checkout","purchase"])
@@ -309,23 +324,29 @@ app.get("/api/admin/analytics", requireAdmin, async (req,res)=>{
 })
 
 // ---------- coupons ----------
-function couponDiscount(coupon, subtotal) {
+function couponDiscount(coupon, subtotal, items = []) {
   if (!coupon || !coupon.active) return 0
+  const now = Date.now()
+  if (coupon.starts_at && new Date(coupon.starts_at).getTime() > now) return 0
   if (Number(coupon.min_order || 0) > subtotal) return 0
   if (coupon.max_uses && Number(coupon.used_count || 0) >= Number(coupon.max_uses)) return 0
-  if (coupon.expires_at && new Date(coupon.expires_at).getTime() <= Date.now()) return 0
+  if (coupon.expires_at && new Date(coupon.expires_at).getTime() <= now) return 0
+  if (Number(coupon.min_items || 0) > items.reduce((n,i)=>n+Number(i.quantity||0),0)) return 0
+  if (coupon.product_id && !items.some(i=>Number(i.product_id)===Number(coupon.product_id))) return 0
+  if (coupon.category && !items.some(i=>String(i.category||"")===String(coupon.category))) return 0
   const raw = coupon.type === "fixed" ? Number(coupon.value) : subtotal * Number(coupon.value) / 100
-  return Math.max(0, Math.min(subtotal, raw))
+  const capped = coupon.max_discount ? Math.min(raw, Number(coupon.max_discount)) : raw
+  return Math.max(0, Math.min(subtotal, capped))
 }
 
-app.post("/api/coupons/validate", async (req, res) => {
+app.post("/api/coupons/validate", rateLimit("coupon", 30, 60*1000), async (req, res) => {
   try {
     const code = String(req.body?.code || "").trim().toUpperCase()
     const subtotal = Number(req.body?.subtotal || 0)
     if (!code || !Number.isFinite(subtotal) || subtotal < 0) return res.status(400).json({ success:false, message:"بيانات الكوبون غير صحيحة" })
     const result = await db.execute({ sql:"SELECT * FROM coupons WHERE code = ?", args:[code] })
     const coupon = result.rows[0]
-    const discount = couponDiscount(coupon, subtotal)
+    const discount = couponDiscount(coupon, subtotal, Array.isArray(req.body?.items) ? req.body.items : [])
     if (!coupon || discount <= 0) return res.status(400).json({ success:false, message:"الكوبون غير صالح أو لا ينطبق على هذا الطلب" })
     res.json({ success:true, coupon:{ code:coupon.code, type:coupon.type, value:coupon.value }, discount, total:Math.max(0, subtotal-discount) })
   } catch(error){ console.error(error); res.status(500).json({success:false,message:"حدث خطأ أثناء التحقق من الكوبون"}) }
@@ -337,10 +358,10 @@ app.get("/api/admin/coupons", requireAdmin, async (req,res)=>{
 })
 app.post("/api/admin/coupons", requireAdmin, async (req,res)=>{
   try {
-    const {code,type,value,minOrder,maxUses,expiresAt,active}=req.body||{}
+    const {code,type,value,minOrder,maxUses,expiresAt,startsAt,maxDiscount,minItems,productId,category,freeShipping,active}=req.body||{}
     const normalized=String(code||"").trim().toUpperCase()
     if(!normalized || !["percent","fixed"].includes(type) || !Number.isFinite(Number(value)) || Number(value)<0 || (type==="percent"&&Number(value)>100)) return res.status(400).json({success:false,message:"بيانات الكوبون غير صحيحة"})
-    const r=await db.execute({sql:"INSERT INTO coupons(code,type,value,min_order,max_uses,expires_at,active) VALUES(?,?,?,?,?,?,?)",args:[normalized,type,Number(value),Math.max(0,Number(minOrder||0)),Math.max(0,Number(maxUses||0)),expiresAt||null,active===false?0:1]})
+    const r=await db.execute({sql:"INSERT INTO coupons(code,type,value,min_order,max_uses,expires_at,starts_at,max_discount,min_items,product_id,category,free_shipping,active) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",args:[normalized,type,Number(value),Math.max(0,Number(minOrder||0)),Math.max(0,Number(maxUses||0)),expiresAt||null,startsAt||null,maxDiscount===""||maxDiscount==null?null:Math.max(0,Number(maxDiscount)),Math.max(0,Number(minItems||0)),productId?Number(productId):null,category||null,freeShipping?1:0,active===false?0:1]})
     res.status(201).json({success:true,id:Number(r.lastInsertRowid)})
   } catch(error){ console.error(error); res.status(400).json({success:false,message:error.message?.includes("UNIQUE")?"كود الكوبون مستخدم بالفعل":"تعذر إنشاء الكوبون"}) }
 })
@@ -349,7 +370,7 @@ app.put("/api/admin/coupons/:id", requireAdmin, async (req,res)=>{
     const id=Number(req.params.id), ex=await db.execute({sql:"SELECT * FROM coupons WHERE id=?",args:[id]}); if(!ex.rows[0]) return res.status(404).json({success:false,message:"الكوبون غير موجود"})
     const old=ex.rows[0], b=req.body||{}, type=b.type??old.type, value=b.value!==undefined?Number(b.value):Number(old.value)
     if(!["percent","fixed"].includes(type)||value<0||(type==="percent"&&value>100)) return res.status(400).json({success:false,message:"بيانات الكوبون غير صحيحة"})
-    await db.execute({sql:"UPDATE coupons SET code=?,type=?,value=?,min_order=?,max_uses=?,expires_at=?,active=? WHERE id=?",args:[String(b.code??old.code).trim().toUpperCase(),type,value,Math.max(0,Number(b.minOrder??old.min_order)),Math.max(0,Number(b.maxUses??old.max_uses)),b.expiresAt===undefined?old.expires_at:(b.expiresAt||null),b.active===undefined?old.active:(b.active?1:0),id]})
+    await db.execute({sql:"UPDATE coupons SET code=?,type=?,value=?,min_order=?,max_uses=?,expires_at=?,starts_at=?,max_discount=?,min_items=?,product_id=?,category=?,free_shipping=?,active=? WHERE id=?",args:[String(b.code??old.code).trim().toUpperCase(),type,value,Math.max(0,Number(b.minOrder??old.min_order)),Math.max(0,Number(b.maxUses??old.max_uses)),b.expiresAt===undefined?old.expires_at:(b.expiresAt||null),b.startsAt===undefined?old.starts_at:(b.startsAt||null),b.maxDiscount===undefined?old.max_discount:(b.maxDiscount===""||b.maxDiscount==null?null:Math.max(0,Number(b.maxDiscount))),Math.max(0,Number(b.minItems??old.min_items)),b.productId===undefined?old.product_id:(b.productId?Number(b.productId):null),b.category===undefined?old.category:(b.category||null),b.freeShipping===undefined?old.free_shipping:(b.freeShipping?1:0),b.active===undefined?old.active:(b.active?1:0),id]})
     res.json({success:true})
   } catch(error){ console.error(error); res.status(400).json({success:false,message:"تعذر تعديل الكوبون"}) }
 })
@@ -374,7 +395,7 @@ app.get("/api/orders", requireAdmin, async (req, res) => {
   }
 })
 
-app.post("/api/orders", async (req, res) => {
+app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) => {
   try {
     const { customer_name, phone, governorate, area, address, notes, items, total, coupon_code } = req.body || {}
     if (!customer_name || !phone || !governorate || !area || !address || !Array.isArray(items) || items.length === 0) {
@@ -422,6 +443,7 @@ app.post("/api/orders", async (req, res) => {
           quantity: qty,
           selected_color: item.selected_color || null,
           selected_size: item.selected_size || null,
+          category: product.category,
         })
       }
     }
@@ -432,7 +454,7 @@ app.post("/api/orders", async (req, res) => {
     if (coupon_code) {
       const cr = await db.execute({ sql: "SELECT * FROM coupons WHERE code = ?", args: [String(coupon_code).trim().toUpperCase()] })
       coupon = cr.rows[0]
-      discount = couponDiscount(coupon, subtotal)
+      discount = couponDiscount(coupon, subtotal, normalizedItems)
       if (!coupon || discount <= 0) return res.status(400).json({ success: false, message: "الكوبون غير صالح أو انتهت صلاحيته" })
     }
 
@@ -609,7 +631,7 @@ app.get("/api/admin/customers/:phone/orders", requireAdmin, async (req, res) => 
 
 // ---------- contact messages ----------
 
-app.post("/api/contact", async (req, res) => {
+app.post("/api/contact", rateLimit("contact", 10, 10*60*1000), async (req, res) => {
   try {
     const { name, phone, message } = req.body || {}
     if (!name || !phone || !message) return res.status(400).json({ success: false, message: "من فضلك أكملي كل الحقول" })

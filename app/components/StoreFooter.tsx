@@ -14,7 +14,7 @@ export default function StoreFooter() {
           <div className="mt-6 flex gap-3">
             <a aria-label="Instagram" href="#" className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 hover:border-white/30"><span className="text-sm font-semibold">IG</span></a>
             <a aria-label="Facebook" href="#" className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 hover:border-white/30"><span className="text-sm font-semibold">f</span></a>
-            <a aria-label="WhatsApp" href="#" className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 hover:border-white/30"><MessageCircle size={17} /></a>
+            <a aria-label="WhatsApp" href="https://wa.me/201000000000" target="_blank" rel="noopener noreferrer" className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 hover:border-white/30"><MessageCircle size={17} /></a>
           </div>
         </div>
         <div>

@@ -90,6 +90,12 @@ async function initDb() {
       max_uses INTEGER NOT NULL DEFAULT 0,
       used_count INTEGER NOT NULL DEFAULT 0,
       expires_at TEXT,
+      starts_at TEXT,
+      max_discount REAL,
+      min_items INTEGER NOT NULL DEFAULT 0,
+      product_id INTEGER,
+      category TEXT,
+      free_shipping INTEGER NOT NULL DEFAULT 0,
       active INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
@@ -147,6 +153,18 @@ async function initDb() {
   for (const [column, sql] of orderMigrations) {
     if (!orderColumns.has(column)) await db.execute(sql)
   }
+
+  const couponInfo = await db.execute("PRAGMA table_info(coupons)")
+  const couponColumns = new Set(couponInfo.rows.map((row) => row.name))
+  const couponMigrations = [
+    ["starts_at", "ALTER TABLE coupons ADD COLUMN starts_at TEXT"],
+    ["max_discount", "ALTER TABLE coupons ADD COLUMN max_discount REAL"],
+    ["min_items", "ALTER TABLE coupons ADD COLUMN min_items INTEGER NOT NULL DEFAULT 0"],
+    ["product_id", "ALTER TABLE coupons ADD COLUMN product_id INTEGER"],
+    ["category", "ALTER TABLE coupons ADD COLUMN category TEXT"],
+    ["free_shipping", "ALTER TABLE coupons ADD COLUMN free_shipping INTEGER NOT NULL DEFAULT 0"],
+  ]
+  for (const [column, sql] of couponMigrations) if (!couponColumns.has(column)) await db.execute(sql)
 
   // seed products
   const productCount = await db.execute("SELECT COUNT(*) AS count FROM products")

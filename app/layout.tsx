@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import "./globals.css"
 import { CartProvider } from "./context/CartContext"
 import { FavoritesProvider } from "./context/FavoritesContext"
+import PwaRegister from "./components/PwaRegister"
 import { API_URL } from "./lib/api"
 import {
   resolveTheme,
@@ -33,6 +34,7 @@ export const metadata: Metadata = {
   applicationName: "DAHAB",
   keywords: ["دهب", "Dahab", "عبايات", "عبايات مصرية", "إكسسوارات"],
   alternates: { canonical: "/" },
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://dahab-seven.vercel.app"),
   openGraph: {
     title: "DAHAB | دهب",
     description: "عبايات مصرية وإكسسوارات مختارة بعناية.",
@@ -55,6 +57,8 @@ export default async function RootLayout({
   return (
     <html lang="ar" dir="rtl">
       <head>
+        <link rel="preconnect" href="https://images.unsplash.com" />
+        <link rel="dns-prefetch" href="//images.unsplash.com" />
         {/* eslint-disable-next-line @next/next/no-css-tags */}
         <link rel="stylesheet" href={fontsUrl} />
         <style
@@ -72,6 +76,7 @@ export default async function RootLayout({
         />
       </head>
       <body>
+        <PwaRegister />
         <CartProvider>
           <FavoritesProvider>{children}</FavoritesProvider>
         </CartProvider>
