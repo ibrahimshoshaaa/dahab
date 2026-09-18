@@ -12,12 +12,12 @@ export type CartItem = Product & {
 function isValidCartItem(value: unknown): value is CartItem {
   if (!value || typeof value !== "object") return false
   const item = value as Partial<CartItem>
-  return Number.isInteger(item.id) && item.id > 0 &&
+  return typeof item.id === "number" && Number.isInteger(item.id) && item.id > 0 &&
     typeof item.slug === "string" && typeof item.name === "string" &&
-    Number.isFinite(item.price) && item.price >= 0 &&
+    typeof item.price === "number" && Number.isFinite(item.price) && item.price >= 0 &&
     typeof item.image === "string" &&
     Array.isArray(item.colors) && Array.isArray(item.sizes) &&
-    Number.isInteger(item.quantity) && item.quantity > 0 && item.quantity <= 100
+    typeof item.quantity === "number" && Number.isInteger(item.quantity) && item.quantity > 0 && item.quantity <= 100
 }
 
 function sanitizeCart(value: unknown): CartItem[] {
