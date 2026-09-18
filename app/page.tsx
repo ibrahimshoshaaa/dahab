@@ -10,6 +10,7 @@ import { Heart, ShoppingBag, ArrowLeft, Truck, RotateCcw, ShieldCheck } from "lu
 import SiteLogo from "./components/SiteLogo"
 import SiteHeader from "./components/SiteHeader"
 import StoreFooter from "./components/StoreFooter"
+import { DahabPageLoading } from "./components/PageLoading"
 
 const DEFAULT_SETTINGS: SiteSettings = {
   hero_image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=2000&q=90",
@@ -58,11 +59,7 @@ export default function Home() {
   ]
 
   if (!isLoaded) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--brand)] border-t-transparent" />
-      </div>
-    )
+    return <DahabPageLoading />
   }
 
   if (loadError && products.length === 0) {
