@@ -727,6 +727,29 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
     if (tx) {
       try { await tx.rollback() } catch {}
     }
+
+    // A concurrent request can win the unique idempotency_key constraint.
+    // Return that already-created order instead of exposing a 500 to the customer.
+    if (requestKey) {
+      try {
+        const existing = await db.execute({
+          sql: "SELECT id,tracking_code,total,discount FROM orders WHERE idempotency_key = ?",
+          args: [requestKey],
+        })
+        if (existing.rows[0]) {
+          const row = existing.rows[0]
+          return res.status(200).json({
+            success: true,
+            message: "تم إنشاء الطلب مسبقًا",
+            order_id: Number(row.id),
+            tracking_code: row.tracking_code,
+            discount: Number(row.discount || 0),
+            total: Number(row.total || 0),
+          })
+        }
+      } catch {}
+    }
+
     const status = Number(error?.statusCode) || 500
     if (status < 500) return res.status(status).json({ success: false, message: error.message })
     console.error(error)
