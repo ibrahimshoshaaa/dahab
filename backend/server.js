@@ -337,6 +337,11 @@ app.put("/api/admin/products/:id", requireAdmin, async (req, res) => {
     if (price !== undefined && (!Number.isFinite(Number(price)) || Number(price) < 0)) return res.status(400).json({ success: false, message: "السعر غير صحيح" })
     if (stock !== undefined && (!Number.isInteger(Number(stock)) || Number(stock) < 0)) return res.status(400).json({ success: false, message: "المخزون غير صحيح" })
     if (lowStockThreshold !== undefined && (!Number.isInteger(Number(lowStockThreshold)) || Number(lowStockThreshold) < 0)) return res.status(400).json({ success: false, message: "حد المخزون المنخفض غير صحيح" })
+    if (slug !== undefined && (!String(slug).trim() || String(slug).length > 200 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(String(slug)))) return res.status(400).json({ success: false, message: "رابط المنتج غير صحيح" })
+    if (slug !== undefined) {
+      const duplicate = await db.execute({ sql: "SELECT id FROM products WHERE slug = ? AND id != ?", args: [String(slug).trim(), id] })
+      if (duplicate.rows[0]) return res.status(409).json({ success: false, message: "رابط المنتج مستخدم بالفعل" })
+    }
     const imageList = Array.isArray(images) ? images.filter(Boolean) : undefined
     if (imageList && (imageList.length > 10 || imageList.some((item) => typeof item !== "string" || item.length > 2000))) return res.status(400).json({ success: false, message: "صور المنتج غير صحيحة" })
     if (Array.isArray(colors) && colors.length > 30 || Array.isArray(sizes) && sizes.length > 30) return res.status(400).json({ success: false, message: "خيارات المنتج كثيرة جدًا" })
