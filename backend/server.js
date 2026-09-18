@@ -1,7 +1,6 @@
 const crypto = require("crypto")
 require("dotenv").config()
 const express = require("express")
-const cookieParser = require("cookie-parser")
 const cors = require("cors")
 const multer = require("multer")
 const { v2: cloudinary } = require("cloudinary")
@@ -40,7 +39,6 @@ if (!isProduction && (!ADMIN_USER || !ADMIN_PASS)) {
 }
 
 const allowedOrigins = String(process.env.FRONTEND_ORIGIN || "*").split(",").map(s => s.trim()).filter(Boolean)
-app.use(cookieParser())
 app.use(cors({ origin: (origin, cb) => { if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)) return cb(null, true); return cb(new Error("Origin not allowed")); } }))
 app.use(express.json({ limit: "1mb" }))
 app.disable("x-powered-by")
@@ -96,8 +94,43 @@ function verifySession(token) {
   }
 }
 
+function getCookie(req, name) {
+  const header = String(req.headers.cookie || "")
+  for (const part of header.split(";")) {
+    const index = part.indexOf("=")
+    if (index === -1) continue
+    const key = part.slice(0, index).trim()
+    if (key === name) return decodeURIComponent(part.slice(index + 1).trim())
+  }
+  return null
+}
+
+function setAdminCookie(res, token, maxAgeSeconds) {
+  const parts = [
+    "dahab-admin-session=" + encodeURIComponent(token),
+    "Path=/",
+    "HttpOnly",
+    "Max-Age=" + maxAgeSeconds,
+    isProduction ? "Secure" : "",
+    isProduction ? "SameSite=None" : "SameSite=Lax",
+  ].filter(Boolean)
+  res.setHeader("Set-Cookie", parts.join("; "))
+}
+
+function clearAdminCookie(res) {
+  const parts = [
+    "dahab-admin-session=",
+    "Path=/",
+    "HttpOnly",
+    "Max-Age=0",
+    isProduction ? "Secure" : "",
+    isProduction ? "SameSite=None" : "SameSite=Lax",
+  ].filter(Boolean)
+  res.setHeader("Set-Cookie", parts.join("; "))
+}
+
 function getAdminSession(req) {
-  return verifySession(req.cookies?.["dahab-admin-session"])
+  return verifySession(getCookie(req, "dahab-admin-session"))
 }
 
 function requireAdmin(req, res, next) {
@@ -162,23 +195,12 @@ app.post("/api/admin/login", rateLimit("login", 8, 10*60*1000), (req, res) => {
     return res.status(401).json({ success: false, message: "بيانات الدخول غير صحيحة" })
   }
   const token = signSession({ sub: "admin", exp: Date.now() + ADMIN_SESSION_TTL_MS, nonce: crypto.randomBytes(16).toString("hex") })
-  res.cookie("dahab-admin-session", token, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "none" : "lax",
-    maxAge: ADMIN_SESSION_TTL_MS,
-    path: "/",
-  })
+  setAdminCookie(res, token, Math.floor(ADMIN_SESSION_TTL_MS / 1000))
   res.json({ success: true })
 })
 
 app.post("/api/admin/logout", requireAdmin, (req, res) => {
-  res.clearCookie("dahab-admin-session", {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "none" : "lax",
-    path: "/",
-  })
+  clearAdminCookie(res)
   res.json({ success: true })
 })
 
