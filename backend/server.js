@@ -483,7 +483,7 @@ function couponDiscount(coupon, subtotal, items = []) {
   if (coupon.product_id && !items.some(i=>Number(i.product_id)===Number(coupon.product_id))) return 0
   if (coupon.category && !items.some(i=>String(i.category||"")===String(coupon.category))) return 0
   const raw = coupon.type === "fixed" ? Number(coupon.value) : subtotal * Number(coupon.value) / 100
-  const capped = coupon.max_discount ? Math.min(raw, Number(coupon.max_discount)) : raw
+  const capped = coupon.max_discount !== null && coupon.max_discount !== undefined ? Math.min(raw, Number(coupon.max_discount)) : raw
   return Math.max(0, Math.min(subtotal, capped))
 }
 
