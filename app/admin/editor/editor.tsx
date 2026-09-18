@@ -66,7 +66,9 @@ const GROUPS: { title: string; keys: string[] }[] = [
   },
 ]
 
-type SaveBtnProps = { className?: string; saving: boolean; saved: boolean; onSave: () => void }\n\n  const SaveBtn = ({ className = "", saving, saved, onSave }: SaveBtnProps) => (
+type SaveBtnProps = { className?: string; saving: boolean; saved: boolean; onSave: () => void }
+
+const SaveBtn = ({ className = "", saving, saved, onSave }: SaveBtnProps) => (
     <button
       onClick={onSave}
       disabled={saving}
