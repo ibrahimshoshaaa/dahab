@@ -16,7 +16,7 @@ const env = {
   ADMIN_USER: "integration-admin",
   ADMIN_PASS: "integration-pass",
   ADMIN_SESSION_SECRET: "integration-secret",
-  FRONTEND_ORIGIN: `http://localhost:${port}`,
+  FRONTEND_ORIGIN: `http://127.0.0.1:${port}`,
   CLOUDINARY_CLOUD_NAME: "",
 }
 let serverProcess
