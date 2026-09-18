@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react"
-import { products as mockProducts, type Product } from "./data/products"
+import type { Product } from "./data/products"
 import Link from "next/link"
 import { fetchProducts, fetchSettings, type SiteSettings } from "./lib/api"
 import { useFavorites } from "./context/FavoritesContext"
@@ -41,17 +41,18 @@ function s(settings: SiteSettings, key: string): string {
 }
 
 export default function Home() {
-  const [products, setProducts] = useState<Product[]>(mockProducts)
+  const [products, setProducts] = useState<Product[]>([])
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS)
   const [isLoaded, setIsLoaded] = useState(false)
+  const [loadError, setLoadError] = useState(false)
   const { toggleFavorite, isFavorite } = useFavorites()
 
   useEffect(() => {
     Promise.all([
-      fetchProducts().then(setProducts),
+      fetchProducts().then(setProducts).catch(() => setLoadError(true)),
       fetchSettings().then((data) => {
         if (Object.keys(data).length > 0) setSettings(data)
-      }),
+      }).catch(() => setLoadError(true)),
     ]).finally(() => setIsLoaded(true))
   }, [])
 
@@ -65,6 +66,22 @@ export default function Home() {
       <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
         <div className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--brand)] border-t-transparent" />
       </div>
+    )
+  }
+
+  if (loadError && products.length === 0) {
+    return (
+      <main dir="rtl" className="min-h-screen bg-[var(--bg)] text-[var(--ink)]">
+        <SiteHeader />
+        <section className="flex min-h-[60vh] items-center justify-center px-6 text-center">
+          <div>
+            <h1 className="text-2xl font-light">المتجر غير متاح حاليًا</h1>
+            <p className="mt-3 text-sm text-gray-500">حدث خطأ أثناء تحميل بيانات المتجر. حاولي مرة أخرى بعد قليل.</p>
+            <button onClick={() => window.location.reload()} className="mt-6 border border-black/20 px-6 py-3 text-sm">إعادة المحاولة</button>
+          </div>
+        </section>
+        <StoreFooter />
+      </main>
     )
   }
 
