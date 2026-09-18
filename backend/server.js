@@ -330,7 +330,6 @@ app.post("/api/admin/products", requireAdmin, async (req, res) => {
     const normalizedVariantStock = variantStock && typeof variantStock === "object" && !Array.isArray(variantStock) ? variantStock : {}
     const variantEntries = Object.entries(normalizedVariantStock)
     const invalidVariantStock = variantEntries.some(([key, value]) => !String(key).trim() || String(key).length > 201 || !Number.isInteger(Number(value)) || Number(value) < 0)
-    const variantTotal = variantEntries.reduce((sum, [, value]) => sum + Number(value), 0)
     const parsedOldPrice = oldPrice === undefined || oldPrice === null || oldPrice === "" ? null : Number(oldPrice)
     const priceCents = Number.isFinite(Number(price)) && Number(price) >= 0 ? toCents(price) : null
     const oldPriceCents = parsedOldPrice === null ? null : toCents(parsedOldPrice)
@@ -388,7 +387,6 @@ app.put("/api/admin/products/:id", requireAdmin, async (req, res) => {
     const normalizedVariantStock = variantStock && typeof variantStock === "object" && !Array.isArray(variantStock) ? variantStock : undefined
     const variantEntries = normalizedVariantStock ? Object.entries(normalizedVariantStock) : []
     const invalidVariantStock = normalizedVariantStock && variantEntries.some(([key, value]) => !String(key).trim() || String(key).length > 201 || !Number.isInteger(Number(value)) || Number(value) < 0)
-    const variantTotal = variantEntries.reduce((sum, [, value]) => sum + Number(value), 0)
     if (imageList && (imageList.length > 10 || imageList.some((item) => typeof item !== "string" || item.length > 2000))) return res.status(400).json({ success: false, message: "صور المنتج غير صحيحة" })
     if (Array.isArray(colors) && colors.length > 30 || Array.isArray(sizes) && sizes.length > 30) return res.status(400).json({ success: false, message: "خيارات المنتج كثيرة جدًا" })
     const effectiveColors = colors !== undefined ? colors : safeJsonParse(e.colors, [])
