@@ -95,7 +95,7 @@ test.before(async () => {
   serverProcess = spawn(process.execPath, ["server.js"], {
     cwd: path.resolve(__dirname, ".."),
     env,
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ["ignore", "inherit", "inherit"],
   })
   await waitForServer()
   await login()
