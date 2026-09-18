@@ -132,7 +132,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setStockChecking(false)
     }
-  }, [mounted])
+  }, [mounted, cart.length])
 
   function addToCart(
     product: Product,
