@@ -18,10 +18,9 @@ export async function fetchProducts(): Promise<ApiProduct[]> {
     if (!data.success) throw new Error(data.message)
 
     return data.products
-  } catch {
-    // Backend not reachable yet — fall back to local mock data so the
-    // storefront stays demoable even without the Express server running.
-    return mockProducts
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") return mockProducts
+    throw error instanceof Error ? error : new Error("تعذر الاتصال بالخادم")
   }
 }
 
@@ -37,8 +36,9 @@ export async function fetchProductBySlug(
     if (!data.success) throw new Error(data.message)
 
     return data.product
-  } catch {
-    return mockProducts.find((product) => product.slug === slug)
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") return mockProducts.find((product) => product.slug === slug)
+    throw error instanceof Error ? error : new Error("تعذر الاتصال بالخادم")
   }
 }
 
@@ -80,6 +80,8 @@ export async function createOrder(payload: OrderPayload) {
   return {
     orderId: data.order_id as number,
     trackingCode: data.tracking_code as string,
+    discount: Number(data.discount || 0),
+    total: Number(data.total || 0),
   }
 }
 
@@ -269,7 +271,6 @@ export async function uploadImage(file: File): Promise<string> {
   const formData = new FormData()
   formData.append("image", file)
 
-  const token = getAdminToken()
   const res = await fetch(`${API_URL}/api/admin/upload`, {
     method: "POST",
     credentials: "include",
