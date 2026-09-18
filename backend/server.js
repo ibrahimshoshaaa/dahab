@@ -221,6 +221,35 @@ function parseProduct(row) {
   }
 }
 
+function parseOptionList(value) {
+  if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean)
+  try {
+    const parsed = JSON.parse(String(value || "[]"))
+    return Array.isArray(parsed) ? parsed.map((item) => String(item).trim()).filter(Boolean) : []
+  } catch {
+    return []
+  }
+}
+
+function validateVariantStock(variantStock, colors, sizes, stock) {
+  const colorList = parseOptionList(colors)
+  const sizeList = parseOptionList(sizes)
+  const entries = Object.entries(variantStock || {})
+  const hasVariants = colorList.length > 0 || sizeList.length > 0
+  if (!hasVariants) return entries.length === 0 && Number(stock) >= 0
+  const expectedKeys = new Set()
+  if (colorList.length && sizeList.length) {
+    colorList.forEach((color) => sizeList.forEach((size) => expectedKeys.add(String(color) + "|" + String(size))))
+  } else if (colorList.length) {
+    colorList.forEach((color) => expectedKeys.add(String(color) + "|-"))
+  } else {
+    sizeList.forEach((size) => expectedKeys.add("-|" + String(size)))
+  }
+  if (entries.length !== expectedKeys.size || entries.some(([key]) => !expectedKeys.has(key))) return false
+  const total = entries.reduce((sum, [, value]) => sum + Number(value), 0)
+  return total === Number(stock)
+}
+
 function slugify(name) {
   const english = String(name).trim().toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -309,7 +338,7 @@ app.post("/api/admin/products", requireAdmin, async (req, res) => {
       return res.status(400).json({ success: false, message: "بيانات المخزون أو السعر القديم غير صحيحة" })
     }
     const mainImage = image || imageList[0]
-    if (!name || String(name).trim().length > 200 || !["عبايات", "إكسسوارات", "حقائب", "طرح"].includes(category) || !Number.isFinite(Number(price)) || Number(price) < 0 || !mainImage || typeof mainImage !== "string" || mainImage.length > 2000 || imageList.length > 10 || (Array.isArray(colors) && colors.length > 30) || (Array.isArray(sizes) && sizes.length > 30) || invalidVariantStock || (variantEntries.length > 0 && variantTotal !== parsedStock)) {
+    if (!name || String(name).trim().length > 200 || !["عبايات", "إكسسوارات", "حقائب", "طرح"].includes(category) || !Number.isFinite(Number(price)) || Number(price) < 0 || !mainImage || typeof mainImage !== "string" || mainImage.length > 2000 || imageList.length > 10 || (Array.isArray(colors) && colors.length > 30) || (Array.isArray(sizes) && sizes.length > 30) || invalidVariantStock || !validateVariantStock(normalizedVariantStock, colors, sizes, parsedStock)) {
       return res.status(400).json({ success: false, message: "بيانات المنتج غير مكتملة" })
     }
     let slug = slugify(name)
@@ -362,7 +391,11 @@ app.put("/api/admin/products/:id", requireAdmin, async (req, res) => {
     const variantTotal = variantEntries.reduce((sum, [, value]) => sum + Number(value), 0)
     if (imageList && (imageList.length > 10 || imageList.some((item) => typeof item !== "string" || item.length > 2000))) return res.status(400).json({ success: false, message: "صور المنتج غير صحيحة" })
     if (Array.isArray(colors) && colors.length > 30 || Array.isArray(sizes) && sizes.length > 30) return res.status(400).json({ success: false, message: "خيارات المنتج كثيرة جدًا" })
-    if (invalidVariantStock || (variantEntries.length > 0 && stock !== undefined && variantTotal !== Number(stock))) return res.status(400).json({ success: false, message: "مخزون الخيارات يجب أن يساوي المخزون الإجمالي" })
+    const effectiveColors = colors !== undefined ? colors : safeJsonParse(e.colors, [])
+        const effectiveSizes = sizes !== undefined ? sizes : safeJsonParse(e.sizes, [])
+        const effectiveVariantStock = normalizedVariantStock !== undefined ? normalizedVariantStock : safeJsonParse(e.variant_stock, {})
+        const effectiveStock = stock !== undefined ? Number(stock) : Number(e.stock ?? 0)
+        if (invalidVariantStock || !validateVariantStock(effectiveVariantStock, effectiveColors, effectiveSizes, effectiveStock)) return res.status(400).json({ success: false, message: "مخزون الخيارات يجب أن يطابق الألوان والمقاسات والمخزون الإجمالي" })
     const mainImage = image ?? imageList?.[0]
     await db.execute({
       sql: `UPDATE products SET slug=?,name=?,category=?,price=?,price_cents=?,old_price=?,old_price_cents=?,image=?,images=?,badge=?,colors=?,sizes=?,description=?,featured=?,best_seller=?,active=?,size_chart=?,material_details=?,care_instructions=?,stock=?,low_stock_threshold=?,variant_stock=? WHERE id=?`,
