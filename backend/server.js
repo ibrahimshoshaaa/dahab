@@ -289,6 +289,12 @@ app.post("/api/admin/products", requireAdmin, async (req, res) => {
       stock, lowStockThreshold, variantStock,
     } = req.body || {}
     const imageList = Array.isArray(images) ? images.filter(Boolean) : []
+    const parsedStock = Number(stock ?? 20)
+    const parsedLowStock = Number(lowStockThreshold ?? 5)
+    const parsedOldPrice = oldPrice === undefined || oldPrice === null || oldPrice === "" ? null : Number(oldPrice)
+    if (!Number.isInteger(parsedStock) || parsedStock < 0 || !Number.isInteger(parsedLowStock) || parsedLowStock < 0 || (parsedOldPrice !== null && (!Number.isFinite(parsedOldPrice) || parsedOldPrice < 0))) {
+      return res.status(400).json({ success: false, message: "بيانات المخزون أو السعر القديم غير صحيحة" })
+    }
     const mainImage = image || imageList[0]
     if (!name || String(name).trim().length > 200 || !["عبايات", "إكسسوارات", "حقائب", "طرح"].includes(category) || !Number.isFinite(Number(price)) || Number(price) < 0 || !mainImage || typeof mainImage !== "string" || mainImage.length > 2000 || imageList.length > 10 || (Array.isArray(colors) && colors.length > 30) || (Array.isArray(sizes) && sizes.length > 30)) {
       return res.status(400).json({ success: false, message: "بيانات المنتج غير مكتملة" })
@@ -299,12 +305,12 @@ app.post("/api/admin/products", requireAdmin, async (req, res) => {
     const result = await db.execute({
       sql: `INSERT INTO products (slug,name,category,price,old_price,image,images,badge,colors,sizes,description,featured,best_seller,active,size_chart,material_details,care_instructions,stock,low_stock_threshold,variant_stock)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      args: [slug, name, category, Number(price), oldPrice ? Number(oldPrice) : null, mainImage,
+      args: [slug, name, category, Number(price), parsedOldPrice, mainImage,
              JSON.stringify(imageList.length ? imageList : [mainImage]), badge || null,
              JSON.stringify(colors || []), JSON.stringify(sizes || []), description || "",
              featured ? 1 : 0, bestSeller ? 1 : 0, active === false ? 0 : 1,
              JSON.stringify(sizeChart || {}), materialDetails || "", careInstructions || "",
-             Math.max(0, Number(stock ?? 20)), Math.max(0, Number(lowStockThreshold ?? 5)),
+             parsedStock, parsedLowStock,
              JSON.stringify(variantStock && typeof variantStock === "object" ? variantStock : {})]
     })
     res.status(201).json({ success: true, id: Number(result.lastInsertRowid), slug })
