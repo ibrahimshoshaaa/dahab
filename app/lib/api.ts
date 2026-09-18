@@ -53,6 +53,7 @@ export type OrderPayload = {
   notes?: string
   total: number
   coupon_code?: string
+  idempotency_key?: string
   items: {
     product_id: number
     product_name: string
