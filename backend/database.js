@@ -1,16 +1,18 @@
 const crypto = require("crypto")
 const { createClient } = require("@libsql/client")
 
-if (!process.env.TURSO_DATABASE_URL) {
+const DATABASE_URL = process.env.TURSO_DATABASE_URL
+const isLocalDatabase = DATABASE_URL && /^(file:|:memory:)/.test(DATABASE_URL)
+if (!DATABASE_URL) {
   throw new Error("TURSO_DATABASE_URL is required")
 }
-if (!process.env.TURSO_AUTH_TOKEN) {
-  throw new Error("TURSO_AUTH_TOKEN is required")
+if (!isLocalDatabase && !process.env.TURSO_AUTH_TOKEN) {
+  throw new Error("TURSO_AUTH_TOKEN is required for remote Turso databases")
 }
 
 const db = createClient({
-  url: process.env.TURSO_DATABASE_URL,
-  authToken: process.env.TURSO_AUTH_TOKEN,
+  url: DATABASE_URL,
+  ...(isLocalDatabase ? {} : { authToken: process.env.TURSO_AUTH_TOKEN }),
 })
 
 function generateTrackingCode() {
