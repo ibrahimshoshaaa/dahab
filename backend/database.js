@@ -34,6 +34,7 @@ async function initDb() {
       address TEXT NOT NULL,
       notes TEXT,
       total REAL NOT NULL,
+      total_cents INTEGER,
       status TEXT NOT NULL DEFAULT 'جديد',
       tracking_code TEXT,
       idempotency_key TEXT UNIQUE,
@@ -47,6 +48,7 @@ async function initDb() {
       product_id INTEGER NOT NULL,
       product_name TEXT NOT NULL,
       price REAL NOT NULL,
+      price_cents INTEGER,
       quantity INTEGER NOT NULL,
       selected_color TEXT,
       selected_size TEXT,
@@ -59,7 +61,9 @@ async function initDb() {
       name TEXT NOT NULL,
       category TEXT NOT NULL,
       price REAL NOT NULL,
+      price_cents INTEGER,
       old_price REAL,
+      old_price_cents INTEGER,
       image TEXT NOT NULL,
       images TEXT NOT NULL DEFAULT '[]',
       badge TEXT,
@@ -97,12 +101,15 @@ async function initDb() {
       code TEXT NOT NULL UNIQUE,
       type TEXT NOT NULL DEFAULT 'percent',
       value REAL NOT NULL,
+      value_cents INTEGER,
       min_order REAL NOT NULL DEFAULT 0,
+      min_order_cents INTEGER NOT NULL DEFAULT 0,
       max_uses INTEGER NOT NULL DEFAULT 0,
       used_count INTEGER NOT NULL DEFAULT 0,
       expires_at TEXT,
       starts_at TEXT,
       max_discount REAL,
+      max_discount_cents INTEGER,
       min_items INTEGER NOT NULL DEFAULT 0,
       product_id INTEGER,
       category TEXT,
@@ -135,6 +142,28 @@ async function initDb() {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
   `)
+
+  // Money migration: integer cents are the canonical representation. Legacy REAL columns remain for compatibility.
+  const moneyMigrations = [
+    ["products", "price_cents", "ALTER TABLE products ADD COLUMN price_cents INTEGER"],
+    ["products", "old_price_cents", "ALTER TABLE products ADD COLUMN old_price_cents INTEGER"],
+    ["orders", "total_cents", "ALTER TABLE orders ADD COLUMN total_cents INTEGER"],
+    ["order_items", "price_cents", "ALTER TABLE order_items ADD COLUMN price_cents INTEGER"],
+    ["coupons", "value_cents", "ALTER TABLE coupons ADD COLUMN value_cents INTEGER"],
+    ["coupons", "min_order_cents", "ALTER TABLE coupons ADD COLUMN min_order_cents INTEGER NOT NULL DEFAULT 0"],
+    ["coupons", "max_discount_cents", "ALTER TABLE coupons ADD COLUMN max_discount_cents INTEGER"],
+  ]
+  for (const [table, column, sql] of moneyMigrations) {
+    const info = await db.execute(`PRAGMA table_info(${table})`)
+    if (!info.rows.some((row) => row.name === column)) await db.execute(sql)
+  }
+  await db.execute("UPDATE products SET price_cents = CAST(ROUND(price * 100) AS INTEGER) WHERE price_cents IS NULL")
+  await db.execute("UPDATE products SET old_price_cents = CAST(ROUND(old_price * 100) AS INTEGER) WHERE old_price IS NOT NULL AND old_price_cents IS NULL")
+  await db.execute("UPDATE orders SET total_cents = CAST(ROUND(total * 100) AS INTEGER) WHERE total_cents IS NULL")
+  await db.execute("UPDATE order_items SET price_cents = CAST(ROUND(price * 100) AS INTEGER) WHERE price_cents IS NULL")
+  await db.execute("UPDATE coupons SET value_cents = CAST(ROUND(value * 100) AS INTEGER) WHERE type = 'fixed' AND value_cents IS NULL")
+  await db.execute("UPDATE coupons SET min_order_cents = CAST(ROUND(min_order * 100) AS INTEGER) WHERE min_order_cents = 0 AND min_order != 0")
+  await db.execute("UPDATE coupons SET max_discount_cents = CAST(ROUND(max_discount * 100) AS INTEGER) WHERE max_discount IS NOT NULL AND max_discount_cents IS NULL")
 
   // migrate: add new columns to a products table created before this update
   const tableInfo = await db.execute("PRAGMA table_info(products)")
