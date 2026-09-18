@@ -573,24 +573,6 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
       return res.status(400).json({ success: false, message: "مفتاح الطلب غير صحيح" })
     }
 
-    if (requestKey) {
-      const existing = await db.execute({
-        sql: "SELECT id,tracking_code,total,discount FROM orders WHERE idempotency_key = ?",
-        args: [requestKey],
-      })
-      if (existing.rows[0]) {
-        const row = existing.rows[0]
-        return res.status(200).json({
-          success: true,
-          message: "تم إنشاء الطلب مسبقًا",
-          order_id: Number(row.id),
-          tracking_code: row.tracking_code,
-          discount: Number(row.discount || 0),
-          total: Number(row.total || 0),
-        })
-      }
-    }
-
     const quantities = new Map()
     for (const item of items) {
       if (!item || typeof item !== "object") {
@@ -611,6 +593,46 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
         return res.status(400).json({ success: false, message: "بيانات المنتجات غير صحيحة" })
       }
       quantities.set(productId, (quantities.get(productId) || 0) + quantity)
+    }
+
+    const requestFingerprint = crypto.createHash("sha256").update(JSON.stringify({
+      customer_name: String(customer_name).trim(),
+      phone: normalizedPhone,
+      governorate: String(governorate).trim(),
+      area: String(area).trim(),
+      address: String(address).trim(),
+      notes: String(notes || "").trim(),
+      coupon_code: coupon_code ? String(coupon_code).trim().toUpperCase() : null,
+      items: items.map(item => ({
+        product_id: Number(item.product_id),
+        quantity: Math.floor(Number(item.quantity)),
+        selected_color: typeof item.selected_color === "string" ? item.selected_color : null,
+        selected_size: typeof item.selected_size === "string" ? item.selected_size : null,
+      })),
+    })).digest("hex")
+
+    if (requestKey) {
+      const existing = await db.execute({
+        sql: "SELECT id,tracking_code,total,discount,idempotency_fingerprint,phone FROM orders WHERE idempotency_key = ?",
+        args: [requestKey],
+      })
+      if (existing.rows[0]) {
+        const row = existing.rows[0]
+        if (row.idempotency_fingerprint && row.idempotency_fingerprint !== requestFingerprint) {
+          return res.status(409).json({ success: false, message: "مفتاح الطلب مستخدم لطلب مختلف" })
+        }
+        if (!row.idempotency_fingerprint && String(row.phone) !== normalizedPhone) {
+          return res.status(409).json({ success: false, message: "مفتاح الطلب مستخدم لطلب مختلف" })
+        }
+        return res.status(200).json({
+          success: true,
+          message: "تم إنشاء الطلب مسبقًا",
+          order_id: Number(row.id),
+          tracking_code: row.tracking_code,
+          discount: Number(row.discount || 0),
+          total: Number(row.total || 0),
+        })
+      }
     }
 
     tx = await db.transaction("write")
@@ -692,8 +714,8 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
     }
 
     const orderResult = await tx.execute({
-      sql: `INSERT INTO orders (customer_name,phone,governorate,area,address,notes,total,status,tracking_code,coupon_code,discount,idempotency_key)
-            VALUES (?,?,?,?,?,?,?,'جديد',?,?,?,?)`,
+      sql: `INSERT INTO orders (customer_name,phone,governorate,area,address,notes,total,status,tracking_code,coupon_code,discount,idempotency_key,idempotency_fingerprint)
+            VALUES (?,?,?,?,?,?,?,'جديد',?,?,?,?,?)`,
       args: [
         customer_name,
         normalizedPhone,
@@ -706,6 +728,7 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
         coupon ? coupon.code : null,
         discount,
         requestKey || null,
+        requestKey ? requestFingerprint : null,
       ],
     })
     const orderId = Number(orderResult.lastInsertRowid)
