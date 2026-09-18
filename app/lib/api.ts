@@ -106,13 +106,21 @@ export async function fetchOrderByCode(code: string) {
 
 // ---------- admin ----------
 
+const ADMIN_SESSION_MARKER = "dahab-admin-session"
+
 export function getAdminToken() {
-  return null
+  if (typeof window === "undefined") return null
+  return localStorage.getItem(ADMIN_SESSION_MARKER)
 }
 
-export function setAdminToken(_token: string) {}
+// This is only a UI/session marker; the real credential is the HttpOnly cookie.
+export function setAdminToken(_token: string) {
+  if (typeof window !== "undefined") localStorage.setItem(ADMIN_SESSION_MARKER, "1")
+}
 
-export function clearAdminToken() {}
+export function clearAdminToken() {
+  if (typeof window !== "undefined") localStorage.removeItem(ADMIN_SESSION_MARKER)
+}
 
 async function adminFetch(path: string, options: RequestInit = {}) {
   const res = await fetch(`${API_URL}${path}`, {
@@ -128,6 +136,7 @@ async function adminFetch(path: string, options: RequestInit = {}) {
   const data = await res.json()
 
   if (!res.ok || !data.success) {
+    if (res.status === 401) clearAdminToken()
     throw new Error(data.message || "حدث خطأ")
   }
 
@@ -148,6 +157,7 @@ export async function adminLogin(username: string, password: string) {
     throw new Error(data.message || "بيانات الدخول غير صحيحة")
   }
 
+  setAdminToken("authenticated")
   return true
 }
 
