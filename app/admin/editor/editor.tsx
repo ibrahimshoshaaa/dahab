@@ -66,6 +66,15 @@ const GROUPS: { title: string; keys: string[] }[] = [
   },
 ]
 
+type SaveBtnProps = { className?: string; saving: boolean; saved: boolean; onSave: () => void }\n\n  const SaveBtn = ({ className = "", saving, saved, onSave }: SaveBtnProps) => (
+    <button
+      onClick={onSave}
+      disabled={saving}
+      className={`rounded-xl bg-[var(--ink)] px-6 py-3 text-sm text-white transition hover:bg-[var(--brand)] disabled:opacity-50 ${className}`}
+    >
+      {saving ? "جارِ الحفظ..." : saved ? "✓ تم الحفظ" : "حفظ التغييرات"}
+    </button>
+  )
 export default function AdminPagesEditor() {
   const router = useRouter()
   const [settings, setSettings] = useState<SiteSettings>({})
@@ -108,15 +117,7 @@ export default function AdminPagesEditor() {
     router.push("/admin/login")
   }
 
-  const SaveBtn = ({ className = "" }: { className?: string }) => (
-    <button
-      onClick={handleSave}
-      disabled={saving}
-      className={`rounded-xl bg-[var(--ink)] px-6 py-3 text-sm text-white transition hover:bg-[var(--brand)] disabled:opacity-50 ${className}`}
-    >
-      {saving ? "جارِ الحفظ..." : saved ? "✓ تم الحفظ" : "حفظ التغييرات"}
-    </button>
-  )
+
 
   return (
     <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
@@ -146,7 +147,7 @@ export default function AdminPagesEditor() {
               التغييرات تظهر على الموقع فورًا بعد الحفظ.
             </p>
           </div>
-          <SaveBtn />
+          <SaveBtn saving={saving} saved={saved} onSave={handleSave} />
         </div>
 
         {error && (
