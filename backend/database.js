@@ -120,6 +120,12 @@ async function initDb() {
 
     CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_tracking_code
     ON orders(tracking_code);
+    CREATE INDEX IF NOT EXISTS idx_products_active_category ON products(active, category);
+    CREATE INDEX IF NOT EXISTS idx_orders_status_created_at ON orders(status, created_at);
+    CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id);
+    CREATE INDEX IF NOT EXISTS idx_contact_messages_read_created_at ON contact_messages(is_read, created_at);
+    CREATE INDEX IF NOT EXISTS idx_product_reviews_product_status ON product_reviews(product_id, status);
+    CREATE INDEX IF NOT EXISTS idx_analytics_created_at ON analytics_events(created_at);
 
     CREATE TABLE IF NOT EXISTS product_reviews (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
