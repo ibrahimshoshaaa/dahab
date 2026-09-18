@@ -147,6 +147,14 @@ function requireAdmin(req, res, next) {
   if (!getAdminSession(req)) {
     return res.status(401).json({ success: false, message: "غير مصرح لك بهذا الإجراء" })
   }
+
+  if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+    const origin = req.headers.origin
+    if (isProduction && (!origin || !allowedOrigins.includes(origin))) {
+      return res.status(403).json({ success: false, message: "مصدر الطلب غير مسموح" })
+    }
+  }
+
   next()
 }
 
