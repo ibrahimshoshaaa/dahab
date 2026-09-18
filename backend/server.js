@@ -5,6 +5,7 @@ const cors = require("cors")
 const multer = require("multer")
 const { v2: cloudinary } = require("cloudinary")
 const { db, generateTrackingCode, initDb } = require("./database")
+const { toCents, fromCents, addCents, percentDiscountCents } = require("./money")
 
 // ---------- Cloudinary config ----------
 cloudinary.config({
@@ -198,7 +199,8 @@ function parseProduct(row) {
 
   return {
     ...row,
-    oldPrice: row.old_price,
+    oldPrice: row.old_price_cents == null ? row.old_price : fromCents(Number(row.old_price_cents)),
+    price: row.price_cents == null ? Number(row.price) : fromCents(Number(row.price_cents)),
     colors: safeJsonParse(row.colors, []),
     sizes: safeJsonParse(row.sizes, []),
     images: safeJsonParse(row.images, []),
@@ -296,6 +298,8 @@ app.post("/api/admin/products", requireAdmin, async (req, res) => {
     const invalidVariantStock = variantEntries.some(([key, value]) => !String(key).trim() || String(key).length > 201 || !Number.isInteger(Number(value)) || Number(value) < 0)
     const variantTotal = variantEntries.reduce((sum, [, value]) => sum + Number(value), 0)
     const parsedOldPrice = oldPrice === undefined || oldPrice === null || oldPrice === "" ? null : Number(oldPrice)
+    const priceCents = Number.isFinite(Number(price)) && Number(price) >= 0 ? toCents(price) : null
+    const oldPriceCents = parsedOldPrice === null ? null : toCents(parsedOldPrice)
     if (!Number.isInteger(parsedStock) || parsedStock < 0 || !Number.isInteger(parsedLowStock) || parsedLowStock < 0 || (parsedOldPrice !== null && (!Number.isFinite(parsedOldPrice) || parsedOldPrice < 0))) {
       return res.status(400).json({ success: false, message: "بيانات المخزون أو السعر القديم غير صحيحة" })
     }
@@ -307,9 +311,9 @@ app.post("/api/admin/products", requireAdmin, async (req, res) => {
     const exists = await db.execute({ sql: "SELECT id FROM products WHERE slug = ?", args: [slug] })
     if (exists.rows[0]) slug = `${slug}-${Date.now()}`
     const result = await db.execute({
-      sql: `INSERT INTO products (slug,name,category,price,old_price,image,images,badge,colors,sizes,description,featured,best_seller,active,size_chart,material_details,care_instructions,stock,low_stock_threshold,variant_stock)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      args: [slug, name, category, Number(price), parsedOldPrice, mainImage,
+      sql: `INSERT INTO products (slug,name,category,price,price_cents,old_price,old_price_cents,image,images,badge,colors,sizes,description,featured,best_seller,active,size_chart,material_details,care_instructions,stock,low_stock_threshold,variant_stock)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      args: [slug, name, category, fromCents(priceCents), priceCents, oldPriceCents === null ? null : fromCents(oldPriceCents), oldPriceCents, mainImage,
              JSON.stringify(imageList.length ? imageList : [mainImage]), badge || null,
              JSON.stringify(colors || []), JSON.stringify(sizes || []), description || "",
              featured ? 1 : 0, bestSeller ? 1 : 0, active === false ? 0 : 1,
@@ -356,10 +360,12 @@ app.put("/api/admin/products/:id", requireAdmin, async (req, res) => {
     if (invalidVariantStock || (variantEntries.length > 0 && stock !== undefined && variantTotal !== Number(stock))) return res.status(400).json({ success: false, message: "مخزون الخيارات يجب أن يساوي المخزون الإجمالي" })
     const mainImage = image ?? imageList?.[0]
     await db.execute({
-      sql: `UPDATE products SET slug=?,name=?,category=?,price=?,old_price=?,image=?,images=?,badge=?,colors=?,sizes=?,description=?,featured=?,best_seller=?,active=?,size_chart=?,material_details=?,care_instructions=?,stock=?,low_stock_threshold=?,variant_stock=? WHERE id=?`,
+      sql: `UPDATE products SET slug=?,name=?,category=?,price=?,price_cents=?,old_price=?,old_price_cents=?,image=?,images=?,badge=?,colors=?,sizes=?,description=?,featured=?,best_seller=?,active=?,size_chart=?,material_details=?,care_instructions=?,stock=?,low_stock_threshold=?,variant_stock=? WHERE id=?`,
       args: [slug ?? e.slug, name ?? e.name, category ?? e.category,
-             price !== undefined ? Number(price) : e.price,
-             oldPrice !== undefined ? (oldPrice ? Number(oldPrice) : null) : e.old_price,
+             price !== undefined ? fromCents(toCents(price)) : (e.price_cents == null ? Number(e.price) : fromCents(Number(e.price_cents))),
+             price !== undefined ? toCents(price) : (e.price_cents == null ? toCents(e.price) : Number(e.price_cents)),
+             oldPrice !== undefined ? (oldPrice ? fromCents(toCents(oldPrice)) : null) : (e.old_price_cents == null ? e.old_price : fromCents(Number(e.old_price_cents))),
+             oldPrice !== undefined ? (oldPrice ? toCents(oldPrice) : null) : (e.old_price_cents == null ? (e.old_price == null ? null : toCents(e.old_price)) : Number(e.old_price_cents)),
              mainImage ?? e.image,
              imageList !== undefined ? JSON.stringify(imageList.length ? imageList : [mainImage ?? e.image]) : e.images,
              badge !== undefined ? badge : e.badge,
