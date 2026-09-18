@@ -148,6 +148,7 @@ async function initDb() {
     ["products", "price_cents", "ALTER TABLE products ADD COLUMN price_cents INTEGER"],
     ["products", "old_price_cents", "ALTER TABLE products ADD COLUMN old_price_cents INTEGER"],
     ["orders", "total_cents", "ALTER TABLE orders ADD COLUMN total_cents INTEGER"],
+    ["orders", "discount_cents", "ALTER TABLE orders ADD COLUMN discount_cents INTEGER NOT NULL DEFAULT 0"],
     ["order_items", "price_cents", "ALTER TABLE order_items ADD COLUMN price_cents INTEGER"],
     ["coupons", "value_cents", "ALTER TABLE coupons ADD COLUMN value_cents INTEGER"],
     ["coupons", "min_order_cents", "ALTER TABLE coupons ADD COLUMN min_order_cents INTEGER NOT NULL DEFAULT 0"],
@@ -333,6 +334,16 @@ async function initDb() {
       })
     }
   }
+
+  // Ensure seeded and legacy rows have canonical cents populated.
+  await db.execute("UPDATE products SET price_cents = CAST(ROUND(price * 100) AS INTEGER) WHERE price_cents IS NULL")
+  await db.execute("UPDATE products SET old_price_cents = CAST(ROUND(old_price * 100) AS INTEGER) WHERE old_price IS NOT NULL AND old_price_cents IS NULL")
+  await db.execute("UPDATE orders SET total_cents = CAST(ROUND(total * 100) AS INTEGER) WHERE total_cents IS NULL")
+  await db.execute("UPDATE orders SET discount_cents = CAST(ROUND(discount * 100) AS INTEGER) WHERE discount_cents IS NULL")
+  await db.execute("UPDATE order_items SET price_cents = CAST(ROUND(price * 100) AS INTEGER) WHERE price_cents IS NULL")
+  await db.execute("UPDATE coupons SET value_cents = CAST(ROUND(value * 100) AS INTEGER) WHERE type = 'fixed' AND value_cents IS NULL")
+  await db.execute("UPDATE coupons SET min_order_cents = CAST(ROUND(min_order * 100) AS INTEGER) WHERE min_order_cents = 0 AND min_order != 0")
+  await db.execute("UPDATE coupons SET max_discount_cents = CAST(ROUND(max_discount * 100) AS INTEGER) WHERE max_discount IS NOT NULL AND max_discount_cents IS NULL")
 
   // seed settings
   const settingsCount = await db.execute("SELECT COUNT(*) AS count FROM settings")
