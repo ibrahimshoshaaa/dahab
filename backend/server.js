@@ -327,9 +327,10 @@ app.post("/api/admin/products", requireAdmin, async (req, res) => {
     const imageList = Array.isArray(images) ? images.filter(Boolean) : []
     const parsedStock = Number(stock ?? 20)
     const parsedLowStock = Number(lowStockThreshold ?? 5)
-    const normalizedVariantStock = variantStock && typeof variantStock === "object" && !Array.isArray(variantStock) ? variantStock : {}
+    const validVariantStockShape = variantStock === undefined || (variantStock && typeof variantStock === "object" && !Array.isArray(variantStock))
+    const normalizedVariantStock = validVariantStockShape && variantStock ? variantStock : {}
     const variantEntries = Object.entries(normalizedVariantStock)
-    const invalidVariantStock = variantEntries.some(([key, value]) => !String(key).trim() || String(key).length > 201 || !Number.isInteger(Number(value)) || Number(value) < 0)
+    const invalidVariantStock = !validVariantStockShape || variantEntries.some(([key, value]) => !String(key).trim() || String(key).length > 201 || !Number.isInteger(Number(value)) || Number(value) < 0)
     const parsedOldPrice = oldPrice === undefined || oldPrice === null || oldPrice === "" ? null : Number(oldPrice)
     const priceCents = Number.isFinite(Number(price)) && Number(price) >= 0 ? toCents(price) : null
     const oldPriceCents = parsedOldPrice === null ? null : toCents(parsedOldPrice)
@@ -337,7 +338,7 @@ app.post("/api/admin/products", requireAdmin, async (req, res) => {
       return res.status(400).json({ success: false, message: "بيانات المخزون أو السعر القديم غير صحيحة" })
     }
     const mainImage = image || imageList[0]
-    if (!name || String(name).trim().length > 200 || !["عبايات", "إكسسوارات", "حقائب", "طرح"].includes(category) || !Number.isFinite(Number(price)) || Number(price) < 0 || !mainImage || typeof mainImage !== "string" || mainImage.length > 2000 || imageList.length > 10 || (Array.isArray(colors) && colors.length > 30) || (Array.isArray(sizes) && sizes.length > 30) || invalidVariantStock || !validateVariantStock(normalizedVariantStock, colors, sizes, parsedStock)) {
+    if (!name || String(name).trim().length > 200 || !["عبايات", "إكسسوارات", "حقائب", "طرح"].includes(category) || !Number.isFinite(Number(price)) || Number(price) < 0 || !mainImage || typeof mainImage !== "string" || mainImage.length > 2000 || imageList.length > 10 || (colors !== undefined && !Array.isArray(colors)) || (sizes !== undefined && !Array.isArray(sizes)) || (Array.isArray(colors) && (colors.length > 30 || colors.some((item) => typeof item !== "string" || item.trim().length === 0 || item.length > 100))) || (Array.isArray(sizes) && (sizes.length > 30 || sizes.some((item) => typeof item !== "string" || item.trim().length === 0 || item.length > 100))) || invalidVariantStock || !validateVariantStock(normalizedVariantStock, colors, sizes, parsedStock)) {
       return res.status(400).json({ success: false, message: "بيانات المنتج غير مكتملة" })
     }
     let slug = slugify(name)
@@ -384,9 +385,10 @@ app.put("/api/admin/products/:id", requireAdmin, async (req, res) => {
       if (duplicate.rows[0]) return res.status(409).json({ success: false, message: "رابط المنتج مستخدم بالفعل" })
     }
     const imageList = Array.isArray(images) ? images.filter(Boolean) : undefined
-    const normalizedVariantStock = variantStock && typeof variantStock === "object" && !Array.isArray(variantStock) ? variantStock : undefined
+    const validVariantStockShape = variantStock === undefined || (variantStock && typeof variantStock === "object" && !Array.isArray(variantStock))
+    const normalizedVariantStock = validVariantStockShape && variantStock ? variantStock : undefined
     const variantEntries = normalizedVariantStock ? Object.entries(normalizedVariantStock) : []
-    const invalidVariantStock = normalizedVariantStock && variantEntries.some(([key, value]) => !String(key).trim() || String(key).length > 201 || !Number.isInteger(Number(value)) || Number(value) < 0)
+    const invalidVariantStock = !validVariantStockShape || (normalizedVariantStock && variantEntries.some(([key, value]) => !String(key).trim() || String(key).length > 201 || !Number.isInteger(Number(value)) || Number(value) < 0))
     if (imageList && (imageList.length > 10 || imageList.some((item) => typeof item !== "string" || item.length > 2000))) return res.status(400).json({ success: false, message: "صور المنتج غير صحيحة" })
     if (Array.isArray(colors) && colors.length > 30 || Array.isArray(sizes) && sizes.length > 30) return res.status(400).json({ success: false, message: "خيارات المنتج كثيرة جدًا" })
     const effectiveColors = colors !== undefined ? colors : safeJsonParse(e.colors, [])
