@@ -291,12 +291,16 @@ app.post("/api/admin/products", requireAdmin, async (req, res) => {
     const imageList = Array.isArray(images) ? images.filter(Boolean) : []
     const parsedStock = Number(stock ?? 20)
     const parsedLowStock = Number(lowStockThreshold ?? 5)
+    const normalizedVariantStock = variantStock && typeof variantStock === "object" && !Array.isArray(variantStock) ? variantStock : {}
+    const variantEntries = Object.entries(normalizedVariantStock)
+    const invalidVariantStock = variantEntries.some(([key, value]) => !String(key).trim() || String(key).length > 201 || !Number.isInteger(Number(value)) || Number(value) < 0)
+    const variantTotal = variantEntries.reduce((sum, [, value]) => sum + Number(value), 0)
     const parsedOldPrice = oldPrice === undefined || oldPrice === null || oldPrice === "" ? null : Number(oldPrice)
     if (!Number.isInteger(parsedStock) || parsedStock < 0 || !Number.isInteger(parsedLowStock) || parsedLowStock < 0 || (parsedOldPrice !== null && (!Number.isFinite(parsedOldPrice) || parsedOldPrice < 0))) {
       return res.status(400).json({ success: false, message: "بيانات المخزون أو السعر القديم غير صحيحة" })
     }
     const mainImage = image || imageList[0]
-    if (!name || String(name).trim().length > 200 || !["عبايات", "إكسسوارات", "حقائب", "طرح"].includes(category) || !Number.isFinite(Number(price)) || Number(price) < 0 || !mainImage || typeof mainImage !== "string" || mainImage.length > 2000 || imageList.length > 10 || (Array.isArray(colors) && colors.length > 30) || (Array.isArray(sizes) && sizes.length > 30)) {
+    if (!name || String(name).trim().length > 200 || !["عبايات", "إكسسوارات", "حقائب", "طرح"].includes(category) || !Number.isFinite(Number(price)) || Number(price) < 0 || !mainImage || typeof mainImage !== "string" || mainImage.length > 2000 || imageList.length > 10 || (Array.isArray(colors) && colors.length > 30) || (Array.isArray(sizes) && sizes.length > 30) || invalidVariantStock || (variantEntries.length > 0 && variantTotal !== parsedStock)) {
       return res.status(400).json({ success: false, message: "بيانات المنتج غير مكتملة" })
     }
     let slug = slugify(name)
@@ -311,7 +315,7 @@ app.post("/api/admin/products", requireAdmin, async (req, res) => {
              featured ? 1 : 0, bestSeller ? 1 : 0, active === false ? 0 : 1,
              JSON.stringify(sizeChart || {}), materialDetails || "", careInstructions || "",
              parsedStock, parsedLowStock,
-             JSON.stringify(variantStock && typeof variantStock === "object" ? variantStock : {})]
+             JSON.stringify(normalizedVariantStock)]
     })
     res.status(201).json({ success: true, id: Number(result.lastInsertRowid), slug })
   } catch (error) {
@@ -343,8 +347,13 @@ app.put("/api/admin/products/:id", requireAdmin, async (req, res) => {
       if (duplicate.rows[0]) return res.status(409).json({ success: false, message: "رابط المنتج مستخدم بالفعل" })
     }
     const imageList = Array.isArray(images) ? images.filter(Boolean) : undefined
+    const normalizedVariantStock = variantStock && typeof variantStock === "object" && !Array.isArray(variantStock) ? variantStock : undefined
+    const variantEntries = normalizedVariantStock ? Object.entries(normalizedVariantStock) : []
+    const invalidVariantStock = normalizedVariantStock && variantEntries.some(([key, value]) => !String(key).trim() || String(key).length > 201 || !Number.isInteger(Number(value)) || Number(value) < 0)
+    const variantTotal = variantEntries.reduce((sum, [, value]) => sum + Number(value), 0)
     if (imageList && (imageList.length > 10 || imageList.some((item) => typeof item !== "string" || item.length > 2000))) return res.status(400).json({ success: false, message: "صور المنتج غير صحيحة" })
     if (Array.isArray(colors) && colors.length > 30 || Array.isArray(sizes) && sizes.length > 30) return res.status(400).json({ success: false, message: "خيارات المنتج كثيرة جدًا" })
+    if (invalidVariantStock || (variantEntries.length > 0 && stock !== undefined && variantTotal !== Number(stock))) return res.status(400).json({ success: false, message: "مخزون الخيارات يجب أن يساوي المخزون الإجمالي" })
     const mainImage = image ?? imageList?.[0]
     await db.execute({
       sql: `UPDATE products SET slug=?,name=?,category=?,price=?,old_price=?,image=?,images=?,badge=?,colors=?,sizes=?,description=?,featured=?,best_seller=?,active=?,size_chart=?,material_details=?,care_instructions=?,stock=?,low_stock_threshold=?,variant_stock=? WHERE id=?`,
@@ -365,7 +374,7 @@ app.put("/api/admin/products/:id", requireAdmin, async (req, res) => {
              careInstructions !== undefined ? careInstructions : e.care_instructions,
              stock !== undefined ? Math.max(0, Number(stock)) : Number(e.stock ?? 0),
              lowStockThreshold !== undefined ? Math.max(0, Number(lowStockThreshold)) : Number(e.low_stock_threshold ?? 5),
-             variantStock !== undefined ? JSON.stringify(variantStock && typeof variantStock === "object" ? variantStock : {}) : (e.variant_stock || "{}"),
+             variantStock !== undefined ? JSON.stringify(normalizedVariantStock) : (e.variant_stock || "{}"),
              id]
     })
     res.json({ success: true })
