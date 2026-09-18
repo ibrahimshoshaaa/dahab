@@ -3,6 +3,7 @@ import "./globals.css"
 import { CartProvider } from "./context/CartContext"
 import { FavoritesProvider } from "./context/FavoritesContext"
 import PwaRegister from "./components/PwaRegister"
+import NavigationLoading from "./components/PageLoading"
 import { API_URL } from "./lib/api"
 import {
   resolveTheme,
@@ -74,6 +75,7 @@ export default async function RootLayout({
         } as React.CSSProperties}
       >
         <PwaRegister />
+        <NavigationLoading />
         <CartProvider>
           <FavoritesProvider>{children}</FavoritesProvider>
         </CartProvider>
