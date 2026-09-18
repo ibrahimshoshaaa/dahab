@@ -111,6 +111,25 @@ test("admin authorization rejects unauthenticated access", async () => {
   assert.equal(response.status, 401)
 })
 
+test("rejects variant stock keys that do not match product options", async () => {
+  const response = await request("/api/admin/products", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: "Invalid Variant Product",
+      category: "عبايات",
+      price: 300,
+      image: "https://example.com/variant.jpg",
+      stock: 1,
+      colors: ["أسود"],
+      sizes: ["M"],
+      variantStock: { "أحمر|M": 1 },
+      active: true,
+    }),
+  })
+  assert.equal(response.status, 400)
+})
+
 test("concurrent last-item orders allow only one purchase", async () => {
   const productId = await createProduct("Concurrent Stock Product", 1, 100)
   const results = await Promise.all([
