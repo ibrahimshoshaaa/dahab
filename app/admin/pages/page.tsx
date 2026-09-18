@@ -18,13 +18,11 @@ const FIELD_LABELS: Record<string, string> = {
   contact_hours: "مواعيد خدمة العملاء",
   contact_instagram_url: "رابط Instagram",
   contact_facebook_url: "رابط Facebook",
-
   shipping_fast_governorates: "محافظات التوصيل السريع (افصلي بينهم بفاصلة ,)",
   shipping_fast_days: "مدة التوصيل السريع",
   shipping_regular_governorates: "باقي المحافظات (افصلي بينهم بفاصلة ,)",
   shipping_regular_days: "مدة التوصيل لباقي المحافظات",
   shipping_note: "ملاحظة أسفل صفحة الشحن",
-
   returns_period_days: "مدة الاستبدال/الاسترجاع (بالأيام)",
   returns_conditions: "شروط الاستبدال/الاسترجاع (سطر لكل شرط)",
   returns_exceptions: "حالات مستثناة (سطر لكل حالة)",
@@ -65,6 +63,26 @@ const GROUPS: { title: string; keys: string[] }[] = [
     keys: ["returns_period_days", "returns_conditions", "returns_exceptions"],
   },
 ]
+
+type SaveButtonProps = {
+  className?: string
+  saving: boolean
+  saved: boolean
+  onSave: () => void
+}
+
+function SaveButton({ className = "", saving, saved, onSave }: SaveButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onSave}
+      disabled={saving}
+      className={`rounded-xl bg-[var(--ink)] px-6 py-3 text-sm text-white transition hover:bg-[var(--brand)] disabled:opacity-50 ${className}`}
+    >
+      {saving ? "جارِ الحفظ..." : saved ? "✓ تم الحفظ" : "حفظ التغييرات"}
+    </button>
+  )
+}
 
 export default function AdminPagesEditor() {
   const router = useRouter()
@@ -108,16 +126,6 @@ export default function AdminPagesEditor() {
     router.push("/admin/login")
   }
 
-  const SaveBtn = ({ className = "" }: { className?: string }) => (
-    <button
-      onClick={handleSave}
-      disabled={saving}
-      className={`rounded-xl bg-[var(--ink)] px-6 py-3 text-sm text-white transition hover:bg-[var(--brand)] disabled:opacity-50 ${className}`}
-    >
-      {saving ? "جارِ الحفظ..." : saved ? "✓ تم الحفظ" : "حفظ التغييرات"}
-    </button>
-  )
-
   return (
     <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
       <AdminHeader maxWidthClass="max-w-4xl" onLogout={handleLogout} />
@@ -132,7 +140,7 @@ export default function AdminPagesEditor() {
               التغييرات تظهر على الموقع فورًا بعد الحفظ.
             </p>
           </div>
-          <SaveBtn />
+          <SaveButton saving={saving} saved={saved} onSave={handleSave} />
         </div>
 
         {error && (
@@ -188,7 +196,7 @@ export default function AdminPagesEditor() {
         )}
 
         <div className="mt-8 flex justify-end">
-          <SaveBtn />
+          <SaveButton saving={saving} saved={saved} onSave={handleSave} />
         </div>
       </section>
     </main>
