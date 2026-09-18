@@ -545,6 +545,9 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
     }
 
     const normalizedPhone = String(phone).replace(/\s|-/g, "")
+    if (String(customer_name).trim().length > 120 || String(governorate).trim().length > 80 || String(area).trim().length > 120 || String(address).trim().length > 500 || String(notes || "").length > 1000) {
+      return res.status(400).json({ success: false, message: "بيانات العميل طويلة جدًا" })
+    }
     if (!/^(01[0125]\d{8}|\+?20[0125]1\d{8})$/.test(normalizedPhone)) {
       return res.status(400).json({ success: false, message: "رقم الهاتف غير صحيح" })
     }
