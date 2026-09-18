@@ -436,7 +436,7 @@ app.patch("/api/admin/reviews/:id", requireAdmin, async (req,res)=>{
   catch(error){console.error(error);res.status(500).json({success:false,message:"تعذر تحديث التقييم"})}
 })
 app.delete("/api/admin/reviews/:id", requireAdmin, async (req,res)=>{
-  try { const r=await db.execute({sql:"DELETE FROM product_reviews WHERE id=?",args:[id]}); if(!r.rowsAffected)return res.status(404).json({success:false,message:"التقييم غير موجود"});res.json({success:true}) }
+  try { const id=Number(req.params.id); if(!Number.isInteger(id)||id<=0) return res.status(400).json({success:false,message:"معرف التقييم غير صحيح"}); const r=await db.execute({sql:"DELETE FROM product_reviews WHERE id=?",args:[id]}); if(!r.rowsAffected)return res.status(404).json({success:false,message:"التقييم غير موجود"});res.json({success:true}) }
   catch(error){res.status(500).json({success:false,message:"تعذر حذف التقييم"})}
 })
 
