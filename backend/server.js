@@ -506,8 +506,14 @@ app.post("/api/admin/coupons", requireAdmin, async (req,res)=>{
   try {
     const {code,type,value,minOrder,maxUses,expiresAt,startsAt,maxDiscount,minItems,productId,category,freeShipping,active}=req.body||{}
     const normalized=String(code||"").trim().toUpperCase()
-    if(!normalized || !["percent","fixed"].includes(type) || !Number.isFinite(Number(value)) || Number(value)<0 || (type==="percent"&&Number(value)>100)) return res.status(400).json({success:false,message:"بيانات الكوبون غير صحيحة"})
-    const r=await db.execute({sql:"INSERT INTO coupons(code,type,value,min_order,max_uses,expires_at,starts_at,max_discount,min_items,product_id,category,free_shipping,active) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",args:[normalized,type,Number(value),Math.max(0,Number(minOrder||0)),Math.max(0,Number(maxUses||0)),expiresAt||null,startsAt||null,maxDiscount===""||maxDiscount==null?null:Math.max(0,Number(maxDiscount)),Math.max(0,Number(minItems||0)),productId?Number(productId):null,category||null,freeShipping?1:0,active===false?0:1]})
+    const numericValue=Number(value)
+    const numericMinOrder=Number(minOrder ?? 0)
+    const numericMaxUses=Number(maxUses ?? 0)
+    const numericMinItems=Number(minItems ?? 0)
+    const numericMaxDiscount=maxDiscount===""||maxDiscount==null?null:Number(maxDiscount)
+    const numericProductId=productId==null||productId===""?null:Number(productId)
+    if(!/^[A-Z0-9_-]{2,80}$/.test(normalized) || !["percent","fixed"].includes(type) || !Number.isFinite(numericValue) || numericValue<0 || (type==="percent"&&numericValue>100) || !Number.isFinite(numericMinOrder)||numericMinOrder<0 || !Number.isInteger(numericMaxUses)||numericMaxUses<0 || !Number.isInteger(numericMinItems)||numericMinItems<0 || (numericMaxDiscount!==null&&(!Number.isFinite(numericMaxDiscount)||numericMaxDiscount<0)) || (numericProductId!==null&&(!Number.isInteger(numericProductId)||numericProductId<=0))) return res.status(400).json({success:false,message:"بيانات الكوبون غير صحيحة"})
+    const r=await db.execute({sql:"INSERT INTO coupons(code,type,value,min_order,max_uses,expires_at,starts_at,max_discount,min_items,product_id,category,free_shipping,active) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",args:[normalized,type,numericValue,numericMinOrder,numericMaxUses,expiresAt||null,startsAt||null,numericMaxDiscount,numericMinItems,numericProductId,category||null,freeShipping?1:0,active===false?0:1]})
     res.status(201).json({success:true,id:Number(r.lastInsertRowid)})
   } catch(error){ console.error(error); res.status(400).json({success:false,message:error.message?.includes("UNIQUE")?"كود الكوبون مستخدم بالفعل":"تعذر إنشاء الكوبون"}) }
 })
