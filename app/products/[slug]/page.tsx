@@ -136,7 +136,7 @@ export default function ProductDetails({
   }
 
   function handleAddToCart() {
-    if (availableStock <= 0) return
+    if (!product || availableStock <= 0) return
     addToCart(
       product!,
       Math.min(quantity, availableStock),

@@ -68,6 +68,10 @@ export default function CheckoutPage() {
   const [discount, setDiscount] = useState(0)
   const [couponError, setCouponError] = useState("")
   const [couponLoading, setCouponLoading] = useState(false)
+  const [idempotencyKey] = useState(() => {
+    if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID()
+    return `1789746190361-${Math.random().toString(36).slice(2)}`
+  })
 
   useEffect(() => {
     if (cart.length) trackEvent({event_type:"begin_checkout",path:"/checkout",metadata:{items:cart.length}})
@@ -99,6 +103,7 @@ export default function CheckoutPage() {
         notes,
         total: Math.max(0, cartTotal - discount),
         coupon_code: couponCode || undefined,
+        idempotency_key: idempotencyKey,
         items: cart.map((item) => ({
           product_id: item.id,
           product_name: item.name,

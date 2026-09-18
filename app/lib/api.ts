@@ -1,7 +1,10 @@
 import { products as mockProducts, type Product } from "../data/products"
 
 export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV !== "production" ? "http://localhost:4000" : (() => {
+    throw new Error("NEXT_PUBLIC_API_URL is required in production")
+  })())
 
 export type ApiProduct = Product & {
   id: number
@@ -18,10 +21,9 @@ export async function fetchProducts(): Promise<ApiProduct[]> {
     if (!data.success) throw new Error(data.message)
 
     return data.products
-  } catch {
-    // Backend not reachable yet — fall back to local mock data so the
-    // storefront stays demoable even without the Express server running.
-    return mockProducts
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") return mockProducts
+    throw error instanceof Error ? error : new Error("تعذر الاتصال بالخادم")
   }
 }
 
@@ -37,8 +39,9 @@ export async function fetchProductBySlug(
     if (!data.success) throw new Error(data.message)
 
     return data.product
-  } catch {
-    return mockProducts.find((product) => product.slug === slug)
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") return mockProducts.find((product) => product.slug === slug)
+    throw error instanceof Error ? error : new Error("تعذر الاتصال بالخادم")
   }
 }
 
@@ -53,6 +56,7 @@ export type OrderPayload = {
   notes?: string
   total: number
   coupon_code?: string
+  idempotency_key?: string
   items: {
     product_id: number
     product_name: string
@@ -79,6 +83,8 @@ export async function createOrder(payload: OrderPayload) {
   return {
     orderId: data.order_id as number,
     trackingCode: data.tracking_code as string,
+    discount: Number(data.discount || 0),
+    total: Number(data.total || 0),
   }
 }
 
@@ -100,30 +106,29 @@ export async function fetchOrderByCode(code: string) {
 
 // ---------- admin ----------
 
-const TOKEN_KEY = "dahab-admin-token"
+const ADMIN_SESSION_MARKER = "dahab-admin-session"
 
 export function getAdminToken() {
   if (typeof window === "undefined") return null
-  return localStorage.getItem(TOKEN_KEY)
+  return localStorage.getItem(ADMIN_SESSION_MARKER)
 }
 
-export function setAdminToken(token: string) {
-  localStorage.setItem(TOKEN_KEY, token)
+// This is only a UI/session marker; the real credential is the HttpOnly cookie.
+export function setAdminToken(_token: string) {
+  if (typeof window !== "undefined") localStorage.setItem(ADMIN_SESSION_MARKER, "1")
 }
 
 export function clearAdminToken() {
-  localStorage.removeItem(TOKEN_KEY)
+  if (typeof window !== "undefined") localStorage.removeItem(ADMIN_SESSION_MARKER)
 }
 
 async function adminFetch(path: string, options: RequestInit = {}) {
-  const token = getAdminToken()
-
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(options.headers || {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     cache: "no-store",
   })
@@ -131,6 +136,7 @@ async function adminFetch(path: string, options: RequestInit = {}) {
   const data = await res.json()
 
   if (!res.ok || !data.success) {
+    if (res.status === 401) clearAdminToken()
     throw new Error(data.message || "حدث خطأ")
   }
 
@@ -140,6 +146,7 @@ async function adminFetch(path: string, options: RequestInit = {}) {
 export async function adminLogin(username: string, password: string) {
   const res = await fetch(`${API_URL}/api/admin/login`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
   })
@@ -150,8 +157,8 @@ export async function adminLogin(username: string, password: string) {
     throw new Error(data.message || "بيانات الدخول غير صحيحة")
   }
 
-  setAdminToken(data.token)
-  return data.token as string
+  setAdminToken("authenticated")
+  return true
 }
 
 export function adminLogout() {
@@ -256,8 +263,9 @@ export async function fetchSettings(): Promise<SiteSettings> {
     const data = await res.json()
     if (!data.success) throw new Error(data.message)
     return data.settings as SiteSettings
-  } catch {
-    return {}
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") return {}
+    throw error instanceof Error ? error : new Error("تعذر تحميل إعدادات الموقع")
   }
 }
 
@@ -274,10 +282,10 @@ export async function uploadImage(file: File): Promise<string> {
   const formData = new FormData()
   formData.append("image", file)
 
-  const token = getAdminToken()
   const res = await fetch(`${API_URL}/api/admin/upload`, {
     method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: "include",
+    headers: {},
     body: formData,
   })
 

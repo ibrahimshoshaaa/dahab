@@ -18,6 +18,13 @@ export default function AdminMessages() {
   const [messages, setMessages] = useState<ContactMessage[]>([])
   const [loading, setLoading] = useState(true)
 
+  function load() {
+    setLoading(true)
+    fetchContactMessages()
+      .then(setMessages)
+      .finally(() => setLoading(false))
+  }
+
   useEffect(() => {
     if (!getAdminToken()) {
       router.push("/admin/login")
@@ -25,13 +32,6 @@ export default function AdminMessages() {
     }
     load()
   }, [router])
-
-  function load() {
-    setLoading(true)
-    fetchContactMessages()
-      .then(setMessages)
-      .finally(() => setLoading(false))
-  }
 
   function handleOpen(msg: ContactMessage) {
     if (!msg.is_read) {
@@ -69,7 +69,7 @@ export default function AdminMessages() {
         <div className="mb-8">
           <h1 className="text-xl font-semibold">رسائل تواصل معنا</h1>
           <p className="mt-1 text-sm text-gray-500">
-            الرسائل اللي بتوصل من فورم "تواصل معنا" في الموقع.
+            الرسائل اللي بتوصل من فورم «تواصل معنا» في الموقع.
           </p>
         </div>
 

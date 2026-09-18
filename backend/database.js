@@ -1,9 +1,18 @@
 const crypto = require("crypto")
 const { createClient } = require("@libsql/client")
 
+const DATABASE_URL = process.env.TURSO_DATABASE_URL
+const isLocalDatabase = DATABASE_URL && /^(file:|:memory:)/.test(DATABASE_URL)
+if (!DATABASE_URL) {
+  throw new Error("TURSO_DATABASE_URL is required")
+}
+if (!isLocalDatabase && !process.env.TURSO_AUTH_TOKEN) {
+  throw new Error("TURSO_AUTH_TOKEN is required for remote Turso databases")
+}
+
 const db = createClient({
-  url: process.env.TURSO_DATABASE_URL,
-  authToken: process.env.TURSO_AUTH_TOKEN,
+  url: DATABASE_URL,
+  ...(isLocalDatabase ? {} : { authToken: process.env.TURSO_AUTH_TOKEN }),
 })
 
 function generateTrackingCode() {
@@ -25,8 +34,11 @@ async function initDb() {
       address TEXT NOT NULL,
       notes TEXT,
       total REAL NOT NULL,
+      total_cents INTEGER,
       status TEXT NOT NULL DEFAULT 'جديد',
       tracking_code TEXT,
+      idempotency_key TEXT UNIQUE,
+      idempotency_fingerprint TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -36,6 +48,7 @@ async function initDb() {
       product_id INTEGER NOT NULL,
       product_name TEXT NOT NULL,
       price REAL NOT NULL,
+      price_cents INTEGER,
       quantity INTEGER NOT NULL,
       selected_color TEXT,
       selected_size TEXT,
@@ -48,7 +61,9 @@ async function initDb() {
       name TEXT NOT NULL,
       category TEXT NOT NULL,
       price REAL NOT NULL,
+      price_cents INTEGER,
       old_price REAL,
+      old_price_cents INTEGER,
       image TEXT NOT NULL,
       images TEXT NOT NULL DEFAULT '[]',
       badge TEXT,
@@ -86,12 +101,15 @@ async function initDb() {
       code TEXT NOT NULL UNIQUE,
       type TEXT NOT NULL DEFAULT 'percent',
       value REAL NOT NULL,
+      value_cents INTEGER,
       min_order REAL NOT NULL DEFAULT 0,
+      min_order_cents INTEGER NOT NULL DEFAULT 0,
       max_uses INTEGER NOT NULL DEFAULT 0,
       used_count INTEGER NOT NULL DEFAULT 0,
       expires_at TEXT,
       starts_at TEXT,
       max_discount REAL,
+      max_discount_cents INTEGER,
       min_items INTEGER NOT NULL DEFAULT 0,
       product_id INTEGER,
       category TEXT,
@@ -123,7 +141,37 @@ async function initDb() {
       metadata TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE INDEX IF NOT EXISTS idx_products_active_category ON products(active, category);
+    CREATE INDEX IF NOT EXISTS idx_orders_status_created_at ON orders(status, created_at);
+    CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id);
+    CREATE INDEX IF NOT EXISTS idx_contact_messages_read_created_at ON contact_messages(is_read, created_at);
+    CREATE INDEX IF NOT EXISTS idx_product_reviews_product_status ON product_reviews(product_id, status);
+    CREATE INDEX IF NOT EXISTS idx_analytics_created_at ON analytics_events(created_at);
   `)
+
+  // Money migration: integer cents are the canonical representation. Legacy REAL columns remain for compatibility.
+  const moneyMigrations = [
+    ["products", "price_cents", "ALTER TABLE products ADD COLUMN price_cents INTEGER"],
+    ["products", "old_price_cents", "ALTER TABLE products ADD COLUMN old_price_cents INTEGER"],
+    ["orders", "total_cents", "ALTER TABLE orders ADD COLUMN total_cents INTEGER"],
+    ["orders", "discount_cents", "ALTER TABLE orders ADD COLUMN discount_cents INTEGER NOT NULL DEFAULT 0"],
+    ["order_items", "price_cents", "ALTER TABLE order_items ADD COLUMN price_cents INTEGER"],
+    ["coupons", "value_cents", "ALTER TABLE coupons ADD COLUMN value_cents INTEGER"],
+    ["coupons", "min_order_cents", "ALTER TABLE coupons ADD COLUMN min_order_cents INTEGER NOT NULL DEFAULT 0"],
+    ["coupons", "max_discount_cents", "ALTER TABLE coupons ADD COLUMN max_discount_cents INTEGER"],
+  ]
+  for (const [table, column, sql] of moneyMigrations) {
+    const info = await db.execute(`PRAGMA table_info(${table})`)
+    if (!info.rows.some((row) => row.name === column)) await db.execute(sql)
+  }
+  await db.execute("UPDATE products SET price_cents = CAST(ROUND(price * 100) AS INTEGER) WHERE price_cents IS NULL")
+  await db.execute("UPDATE products SET old_price_cents = CAST(ROUND(old_price * 100) AS INTEGER) WHERE old_price IS NOT NULL AND old_price_cents IS NULL")
+  await db.execute("UPDATE orders SET total_cents = CAST(ROUND(total * 100) AS INTEGER) WHERE total_cents IS NULL")
+  await db.execute("UPDATE order_items SET price_cents = CAST(ROUND(price * 100) AS INTEGER) WHERE price_cents IS NULL")
+  await db.execute("UPDATE coupons SET value_cents = CAST(ROUND(value * 100) AS INTEGER) WHERE type = 'fixed' AND value_cents IS NULL")
+  await db.execute("UPDATE coupons SET min_order_cents = CAST(ROUND(min_order * 100) AS INTEGER) WHERE min_order_cents = 0 AND min_order != 0")
+  await db.execute("UPDATE coupons SET max_discount_cents = CAST(ROUND(max_discount * 100) AS INTEGER) WHERE max_discount IS NOT NULL AND max_discount_cents IS NULL")
 
   // migrate: add new columns to a products table created before this update
   const tableInfo = await db.execute("PRAGMA table_info(products)")
@@ -141,6 +189,20 @@ async function initDb() {
     if (!existingColumns.has(column)) {
       await db.execute(sql)
     }
+  }
+
+  // order idempotency migration
+  const orderColumnsAfter = await db.execute("PRAGMA table_info(orders)")
+  const orderColumnNames = new Set(orderColumnsAfter.rows.map((row) => row.name))
+  if (!orderColumnNames.has("idempotency_key")) {
+    await db.execute("ALTER TABLE orders ADD COLUMN idempotency_key TEXT")
+    await db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idempotency_key ON orders(idempotency_key)")
+  }
+
+  // idempotency fingerprint migration
+  const orderColumnsForIdempotency = new Set((await db.execute("PRAGMA table_info(orders)")).rows.map((row) => row.name))
+  if (!orderColumnsForIdempotency.has("idempotency_fingerprint")) {
+    await db.execute("ALTER TABLE orders ADD COLUMN idempotency_fingerprint TEXT")
   }
 
   // order pricing history migrations
@@ -280,6 +342,19 @@ async function initDb() {
     }
   }
 
+  // Ensure seeded and legacy rows have canonical cents populated.
+  await db.execute("UPDATE products SET price_cents = CAST(ROUND(price * 100) AS INTEGER) WHERE price_cents IS NULL")
+  await db.execute("UPDATE products SET old_price_cents = CAST(ROUND(old_price * 100) AS INTEGER) WHERE old_price IS NOT NULL AND old_price_cents IS NULL")
+  await db.execute("UPDATE orders SET total_cents = CAST(ROUND(total * 100) AS INTEGER) WHERE total_cents IS NULL")
+  await db.execute("UPDATE orders SET discount_cents = CAST(ROUND(discount * 100) AS INTEGER) WHERE discount_cents IS NULL")
+  await db.execute("UPDATE order_items SET price_cents = CAST(ROUND(price * 100) AS INTEGER) WHERE price_cents IS NULL")
+  await db.execute("UPDATE coupons SET value_cents = CAST(ROUND(value * 100) AS INTEGER) WHERE type = 'fixed' AND value_cents IS NULL")
+  await db.execute("UPDATE coupons SET min_order_cents = CAST(ROUND(min_order * 100) AS INTEGER) WHERE min_order_cents = 0 AND min_order != 0")
+  await db.execute("UPDATE coupons SET max_discount_cents = CAST(ROUND(max_discount * 100) AS INTEGER) WHERE max_discount IS NOT NULL AND max_discount_cents IS NULL")
+
+  // Story content was intentionally removed; clean legacy keys from existing databases.
+  await db.execute("DELETE FROM settings WHERE key IN ('story_title_line1','story_title_line2','story_body','story_image')")
+
   // seed settings
   const settingsCount = await db.execute("SELECT COUNT(*) AS count FROM settings")
   if (settingsCount.rows[0].count === 0) {
@@ -290,10 +365,6 @@ async function initDb() {
       hero_title_line2: "بطابع دهب",
       hero_subtitle: "عبايات مصرية بتصميمات راقية تجمع بين الاحتشام والأناقة وتناسب كل لحظة.",
       hero_button_text: "اكتشفي المجموعة",
-      story_title_line1: "لأن الأناقة",
-      story_title_line2: "تستحق أن تُحكى",
-      story_body: "في دهب نؤمن أن العباية ليست مجرد قطعة ملابس، بل تعبير عن شخصيتك. نقدم تصميمات مصرية معاصرة تجمع بين البساطة والفخامة.",
-      story_image: "https://images.unsplash.com/photo-1591369822096-ffd140ec948f?auto=format&fit=crop&w=1200&q=90",
       collection_abaya_image: "https://images.unsplash.com/photo-1591369822096-ffd140ec948f?auto=format&fit=crop&w=1200&q=90",
       collection_accessories_image: "https://images.unsplash.com/photo-1617038220319-276d3cfab638?auto=format&fit=crop&w=1200&q=90",
       accessories_item1_title: "حقائب",

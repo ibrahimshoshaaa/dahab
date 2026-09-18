@@ -39,6 +39,17 @@ const IMAGE_KEYS = new Set([
 const FIELD_ORDER = Object.keys(FIELD_LABELS)
 
 // ── Page ─────────────────────────────────────────────────────────────────────
+type SaveBtnProps = { className?: string; saving: boolean; saved: boolean; onSave: () => void }
+
+const SaveBtn = ({ className = "", saving, saved, onSave }: SaveBtnProps) => (
+    <button
+      onClick={onSave}
+      disabled={saving}
+      className={`rounded-xl bg-[var(--ink)] px-6 py-3 text-sm text-white transition hover:bg-[var(--brand)] disabled:opacity-50 ${className}`}
+    >
+      {saving ? "جارِ الحفظ..." : saved ? "✓ تم الحفظ" : "حفظ التغييرات"}
+    </button>
+  )
 export default function AdminHomepage() {
   const router = useRouter()
   const [settings, setSettings] = useState<SiteSettings>({})
@@ -78,15 +89,7 @@ export default function AdminHomepage() {
     router.push("/admin/login")
   }
 
-  const SaveBtn = ({ className = "" }: { className?: string }) => (
-    <button
-      onClick={handleSave}
-      disabled={saving}
-      className={`rounded-xl bg-[var(--ink)] px-6 py-3 text-sm text-white transition hover:bg-[var(--brand)] disabled:opacity-50 ${className}`}
-    >
-      {saving ? "جارِ الحفظ..." : saved ? "✓ تم الحفظ" : "حفظ التغييرات"}
-    </button>
-  )
+
 
   return (
     <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
@@ -102,7 +105,7 @@ export default function AdminHomepage() {
               ارفع صورة من جهازك أو الصق رابط — التغييرات تظهر على الموقع بعد الحفظ.
             </p>
           </div>
-          <SaveBtn />
+          <SaveBtn saving={saving} saved={saved} onSave={handleSave} />
         </div>
 
         {error && (
@@ -155,7 +158,7 @@ export default function AdminHomepage() {
         )}
 
         <div className="mt-8 flex justify-end">
-          <SaveBtn />
+          <SaveBtn saving={saving} saved={saved} onSave={handleSave} />
         </div>
 
       </section>

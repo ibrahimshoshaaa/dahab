@@ -9,6 +9,25 @@ export type CartItem = Product & {
   selectedSize?: string
 }
 
+function isValidCartItem(value: unknown): value is CartItem {
+  if (!value || typeof value !== "object") return false
+  const item = value as Partial<CartItem>
+  return typeof item.id === "number" && Number.isInteger(item.id) && item.id > 0 &&
+    typeof item.slug === "string" && typeof item.name === "string" &&
+    typeof item.price === "number" && Number.isFinite(item.price) && item.price >= 0 &&
+    typeof item.image === "string" &&
+    Array.isArray(item.colors) && Array.isArray(item.sizes) &&
+    typeof item.quantity === "number" && Number.isInteger(item.quantity) && item.quantity > 0 && item.quantity <= 100
+}
+
+function sanitizeCart(value: unknown): CartItem[] {
+  if (!Array.isArray(value)) return []
+  return value.filter(isValidCartItem).map((item) => ({
+    ...item,
+    quantity: Math.min(100, Math.max(1, Math.floor(item.quantity))),
+  }))
+}
+
 type CartContextType = {
   cart: CartItem[]
   addToCart: (
@@ -43,7 +62,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (saved) {
       try {
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        setCart(JSON.parse(saved))
+        setCart(sanitizeCart(JSON.parse(saved)))
       } catch {
         localStorage.removeItem("dahab-cart")
       }
@@ -118,7 +137,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         item.id === id &&
         item.selectedColor === color &&
         item.selectedSize === size
-          ? { ...item, quantity }
+          ? { ...item, quantity: Math.min(item.stock ?? 99, Math.floor(quantity)) }
           : item
       )
     )
