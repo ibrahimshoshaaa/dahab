@@ -58,6 +58,7 @@ type CartContextType = {
   cartHasStockIssue: boolean
   stockChecking: boolean
   stockError: string
+  stockNotice: string
   cartCount: number
   cartTotal: number
   mounted: boolean
@@ -70,6 +71,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
   const [stockChecking, setStockChecking] = useState(false)
   const [stockError, setStockError] = useState("")
+  const [stockNotice, setStockNotice] = useState("")
 
   useEffect(() => {
     const saved = localStorage.getItem("dahab-cart")
@@ -97,33 +99,45 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     setStockChecking(true)
     setStockError("")
+    setStockNotice("")
 
     try {
       const products = await fetchProducts()
       const productMap = new Map(products.map((product) => [product.id, product]))
+      let adjusted = false
 
       setCart((current) =>
         current.map((item) => {
           const latest = productMap.get(item.id)
-          if (!latest) return item
+          if (!latest) {
+            adjusted = true
+            return { ...item, stock: 0, variantStock: {} }
+          }
 
           const latestStock = getCartItemStock({
             ...item,
             stock: latest.stock,
             variantStock: latest.variantStock,
           })
+          const nextQuantity = latestStock > 0
+            ? Math.min(item.quantity, latestStock)
+            : item.quantity
+
+          if (nextQuantity !== item.quantity) adjusted = true
 
           return {
             ...item,
             stock: latest.stock,
             variantStock: latest.variantStock,
             lowStockThreshold: latest.lowStockThreshold,
-            quantity: latestStock > 0
-              ? Math.min(item.quantity, latestStock)
-              : item.quantity,
+            quantity: nextQuantity,
           }
         })
       )
+
+      if (adjusted) {
+        setStockNotice("تم تحديث كميات السلة حسب المخزون المتاح حاليًا.")
+      }
 
       return true
     } catch {
@@ -235,6 +249,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         cartHasStockIssue,
         stockChecking,
         stockError,
+        stockNotice,
         cartCount,
         cartTotal,
         mounted,
