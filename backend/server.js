@@ -769,7 +769,7 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
 
     const orderResult = await tx.execute({
       sql: `INSERT INTO orders (customer_name,phone,governorate,area,address,notes,total,total_cents,status,tracking_code,coupon_code,discount,discount_cents,idempotency_key,idempotency_fingerprint)
-            VALUES (?,?,?,?,?,?,?,?,'جديد',?,?,?,?,?,?,?)`,
+            VALUES (?,?,?,?,?,?,?,'جديد',?,?,?,?,?,?,?)`,
       args: [
         customer_name,
         normalizedPhone,
