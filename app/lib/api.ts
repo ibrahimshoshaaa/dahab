@@ -253,8 +253,9 @@ export async function fetchSettings(): Promise<SiteSettings> {
     const data = await res.json()
     if (!data.success) throw new Error(data.message)
     return data.settings as SiteSettings
-  } catch {
-    return {}
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") return {}
+    throw error instanceof Error ? error : new Error("تعذر تحميل إعدادات الموقع")
   }
 }
 
