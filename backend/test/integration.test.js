@@ -23,7 +23,7 @@ let serverProcess
 let adminCookie
 
 async function request(pathname, options = {}) {
-  const headers = { ...(options.headers || {}) }
+  const headers = { Origin: env.FRONTEND_ORIGIN, ...(options.headers || {}) }
   if (adminCookie) headers.Cookie = adminCookie
   return fetch(`http://127.0.0.1:${port}${pathname}`, { ...options, headers })
 }
