@@ -27,6 +27,7 @@ async function initDb() {
       total REAL NOT NULL,
       status TEXT NOT NULL DEFAULT 'جديد',
       tracking_code TEXT,
+      idempotency_key TEXT UNIQUE,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -141,6 +142,14 @@ async function initDb() {
     if (!existingColumns.has(column)) {
       await db.execute(sql)
     }
+  }
+
+  // order idempotency migration
+  const orderColumnsAfter = await db.execute("PRAGMA table_info(orders)")
+  const orderColumnNames = new Set(orderColumnsAfter.rows.map((row) => row.name))
+  if (!orderColumnNames.has("idempotency_key")) {
+    await db.execute("ALTER TABLE orders ADD COLUMN idempotency_key TEXT")
+    await db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idempotency_key ON orders(idempotency_key)")
   }
 
   // order pricing history migrations
