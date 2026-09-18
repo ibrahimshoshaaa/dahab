@@ -1216,6 +1216,7 @@ app.use((error, req, res, next) => {
     return res.status(400).json({ success: false, message: "ملف الصورة غير صالح أو حجمه أكبر من المسموح" })
   }
   if (error) {
+    if (!isProduction) console.error("Request middleware error:", error.message)
     return res.status(400).json({ success: false, message: "بيانات الطلب غير صالحة" })
   }
   next()
