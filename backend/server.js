@@ -17,12 +17,19 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter(req, file, cb) {
-    if (!file.mimetype.startsWith("image/")) {
-      return cb(new Error("ملفات الصور فقط مسموحة"))
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) {
+      return cb(new Error("مسموح فقط بصور JPG وPNG وWebP"))
     }
     cb(null, true)
   },
 })
+
+function detectImageType(buffer) {
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return "image/jpeg"
+  if (buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))) return "image/png"
+  if (buffer.length >= 12 && buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WEBP") return "image/webp"
+  return null
+}
 
 const app = express()
 const PORT = process.env.PORT || 4000
@@ -1000,6 +1007,10 @@ app.put("/api/admin/settings", requireAdmin, async (req, res) => {
 app.post("/api/admin/upload", requireAdmin, upload.single("image"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: "لم يتم إرسال صورة" })
+    const detectedType = detectImageType(req.file.buffer)
+    if (!detectedType || detectedType !== req.file.mimetype) {
+      return res.status(400).json({ success: false, message: "نوع ملف الصورة غير صالح" })
+    }
     if (!process.env.CLOUDINARY_CLOUD_NAME) return res.status(500).json({ success: false, message: "Cloudinary غير مُعدّ" })
     const result = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
