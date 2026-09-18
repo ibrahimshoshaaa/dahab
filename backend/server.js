@@ -36,7 +36,7 @@ const PORT = process.env.PORT || 4000
 const isProduction = process.env.NODE_ENV === "production"
 const ADMIN_USER = process.env.ADMIN_USER
 const ADMIN_PASS = process.env.ADMIN_PASS
-const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET
+const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || (!isProduction ? "dev-only-secret" : null)
 
 if (isProduction && (!ADMIN_USER || !ADMIN_PASS || !ADMIN_SESSION_SECRET)) {
   throw new Error("ADMIN_USER, ADMIN_PASS and ADMIN_SESSION_SECRET are required in production")
@@ -89,7 +89,7 @@ function base64Url(value) {
 
 function signSession(payload) {
   const body = base64Url(JSON.stringify(payload))
-  const signature = crypto.createHmac("sha256", ADMIN_SESSION_SECRET || "dev-only-secret").update(body).digest("base64url")
+  const signature = crypto.createHmac("sha256", ADMIN_SESSION_SECRET).update(body).digest("base64url")
   return body + "." + signature
 }
 
