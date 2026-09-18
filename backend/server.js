@@ -300,6 +300,7 @@ app.post("/api/admin/products", requireAdmin, async (req, res) => {
 app.put("/api/admin/products/:id", requireAdmin, async (req, res) => {
   try {
     const id = Number(req.params.id)
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ success: false, message: "معرف المنتج غير صحيح" })
     const ex = await db.execute({ sql: "SELECT * FROM products WHERE id = ?", args: [id] })
     if (!ex.rows[0]) return res.status(404).json({ success: false, message: "المنتج غير موجود" })
     const e = ex.rows[0]
@@ -308,6 +309,11 @@ app.put("/api/admin/products/:id", requireAdmin, async (req, res) => {
       featured, bestSeller, active, sizeChart, materialDetails, careInstructions,
       stock, lowStockThreshold, variantStock,
     } = req.body || {}
+    if (name !== undefined && (!String(name).trim() || String(name).length > 200)) return res.status(400).json({ success: false, message: "اسم المنتج غير صحيح" })
+    if (category !== undefined && !["عبايات", "إكسسوارات"].includes(category)) return res.status(400).json({ success: false, message: "تصنيف المنتج غير صحيح" })
+    if (price !== undefined && (!Number.isFinite(Number(price)) || Number(price) < 0)) return res.status(400).json({ success: false, message: "السعر غير صحيح" })
+    if (stock !== undefined && (!Number.isInteger(Number(stock)) || Number(stock) < 0)) return res.status(400).json({ success: false, message: "المخزون غير صحيح" })
+    if (lowStockThreshold !== undefined && (!Number.isInteger(Number(lowStockThreshold)) || Number(lowStockThreshold) < 0)) return res.status(400).json({ success: false, message: "حد المخزون المنخفض غير صحيح" })
     const imageList = Array.isArray(images) ? images.filter(Boolean) : undefined
     const mainImage = image ?? imageList?.[0]
     await db.execute({
