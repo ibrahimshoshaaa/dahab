@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import Link from "next/link"
 import {
   ArrowRight,
@@ -9,7 +10,7 @@ import {
   ShoppingBag,
   ArrowLeft,
 } from "lucide-react"
-import { useCart } from "../context/CartContext"
+import { getCartItemStock, useCart } from "../context/CartContext"
 import SiteHeader from "../components/SiteHeader"
 import StoreFooter from "../components/StoreFooter"
 
@@ -21,7 +22,15 @@ export default function CartPage() {
     updateQuantity,
     removeFromCart,
     mounted,
+    refreshCartStock,
+    cartHasStockIssue,
+    stockChecking,
+    stockError,
   } = useCart()
+
+  useEffect(() => {
+    if (mounted && cart.length > 0) refreshCartStock()
+  }, [mounted, cart.length, refreshCartStock])
 
   return (
     <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
@@ -147,6 +156,14 @@ export default function CartPage() {
 
                       </div>
 
+                      <div className={`mt-3 rounded-2xl px-4 py-3 text-xs leading-6 ${getCartItemStock(item) <= 0 ? "bg-red-50 text-red-700" : getCartItemStock(item) < item.quantity ? "bg-amber-50 text-amber-700" : "bg-[var(--bg)] text-gray-500"}`}>
+                        {getCartItemStock(item) <= 0
+                          ? "المنتج أو الاختيار ده نفد من المخزون حاليًا."
+                          : getCartItemStock(item) < item.quantity
+                            ? `المتاح حاليًا ${getCartItemStock(item)} فقط. تم ضبط الكمية تلقائيًا.`
+                            : `متوفر حاليًا: ${getCartItemStock(item)} قطعة`}
+                      </div>
+
                       <div className="mt-3 flex flex-wrap gap-2">
 
                         {item.selectedColor && (
@@ -194,7 +211,8 @@ export default function CartPage() {
                                 item.selectedSize
                               )
                             }
-                            className="flex h-10 w-10 items-center justify-center"
+                            disabled={getCartItemStock(item) <= item.quantity}
+                            className="flex h-10 w-10 items-center justify-center disabled:cursor-not-allowed disabled:opacity-30"
                           >
                             <Plus size={15} />
                           </button>
@@ -269,12 +287,28 @@ export default function CartPage() {
 
               </div>
 
+              {stockError && (
+                <div className="mt-6 rounded-2xl bg-red-50 px-4 py-3 text-center text-xs leading-6 text-red-700">
+                  {stockError}
+                </div>
+              )}
+
+              {cartHasStockIssue && !stockError && (
+                <div className="mt-6 rounded-2xl bg-amber-50 px-4 py-3 text-center text-xs leading-6 text-amber-700">
+                  عدّلي الكميات غير المتاحة قبل إتمام الطلب.
+                </div>
+              )}
+
               <Link
-                href="/checkout"
-                className="mt-7 flex w-full items-center justify-center gap-3 rounded-full bg-black py-4 text-sm text-white transition hover:bg-[var(--brand-dark)]"
+                href={cartHasStockIssue || stockChecking || stockError ? "/cart" : "/checkout"}
+                aria-disabled={cartHasStockIssue || stockChecking || Boolean(stockError)}
+                onClick={(e) => {
+                  if (cartHasStockIssue || stockChecking || stockError) e.preventDefault()
+                }}
+                className="mt-7 flex w-full items-center justify-center gap-3 rounded-full bg-black py-4 text-sm text-white transition hover:bg-[var(--brand-dark)] aria-disabled:cursor-not-allowed aria-disabled:opacity-40"
               >
-                إتمام الطلب
-                <ArrowLeft size={18} />
+                {stockChecking ? "جاري التحقق من المخزون..." : "إتمام الطلب"}
+                {!stockChecking && <ArrowLeft size={18} />}
               </Link>
 
               <Link
