@@ -97,6 +97,11 @@ function base64Url(value) {
   return Buffer.from(value).toString("base64url")
 }
 
+function logServerError(error) {
+  if (!isProduction) console.error(error instanceof Error ? error.message : "Unknown server error")
+  else console.error("[server] request failed")
+}
+
 function safeEqualText(a, b) {
   const left = Buffer.from(String(a || ""))
   const right = Buffer.from(String(b || ""))
@@ -255,7 +260,7 @@ app.get("/api/products", async (req, res) => {
     const result = await db.execute("SELECT * FROM products WHERE active = 1 ORDER BY id DESC")
     res.json({ success: true, products: result.rows.map(parseProduct) })
   } catch (error) {
-    console.error(error)
+    logServerError(error)
     res.status(500).json({ success: false, message: "حدث خطأ في جلب المنتجات" })
   }
 })
@@ -266,7 +271,7 @@ app.get("/api/products/:slug", async (req, res) => {
     if (!result.rows[0]) return res.status(404).json({ success: false, message: "المنتج غير موجود" })
     res.json({ success: true, product: parseProduct(result.rows[0]) })
   } catch (error) {
-    console.error(error)
+    logServerError(error)
     res.status(500).json({ success: false, message: "حدث خطأ في جلب المنتج" })
   }
 })
@@ -278,7 +283,7 @@ app.get("/api/admin/products", requireAdmin, async (req, res) => {
     const result = await db.execute("SELECT * FROM products ORDER BY id DESC")
     res.json({ success: true, products: result.rows.map(parseProduct) })
   } catch (error) {
-    console.error(error)
+    logServerError(error)
     res.status(500).json({ success: false, message: "حدث خطأ في جلب المنتجات" })
   }
 })
@@ -323,7 +328,7 @@ app.post("/api/admin/products", requireAdmin, async (req, res) => {
     })
     res.status(201).json({ success: true, id: Number(result.lastInsertRowid), slug })
   } catch (error) {
-    console.error(error)
+    logServerError(error)
     res.status(500).json({ success: false, message: "حدث خطأ أثناء إضافة المنتج" })
   }
 })
@@ -385,7 +390,7 @@ app.put("/api/admin/products/:id", requireAdmin, async (req, res) => {
     })
     res.json({ success: true })
   } catch (error) {
-    console.error(error)
+    logServerError(error)
     res.status(500).json({ success: false, message: "حدث خطأ أثناء تعديل المنتج" })
   }
 })
@@ -404,7 +409,7 @@ app.patch("/api/admin/products/:id/stock", requireAdmin, async (req, res) => {
     const result = await db.execute({ sql: "UPDATE products SET stock = ? WHERE id = ?", args: [stock, id] })
     res.json({ success: true, stock })
   } catch (error) {
-    console.error(error)
+    logServerError(error)
     res.status(500).json({ success: false, message: "حدث خطأ أثناء تحديث المخزون" })
   }
 })
@@ -417,7 +422,7 @@ app.delete("/api/admin/products/:id", requireAdmin, async (req, res) => {
     if (result.rowsAffected === 0) return res.status(404).json({ success: false, message: "المنتج غير موجود" })
     res.json({ success: true })
   } catch (error) {
-    console.error(error)
+    logServerError(error)
     res.status(500).json({ success: false, message: "حدث خطأ أثناء حذف المنتج" })
   }
 })
@@ -431,7 +436,7 @@ app.get("/api/products/:id/reviews", async (req, res) => {
     const rows = result.rows
     const average = rows.length ? rows.reduce((sum,r)=>sum+Number(r.rating),0)/rows.length : 0
     res.json({ success:true, reviews:rows, average, count:rows.length })
-  } catch(error) { console.error(error); res.status(500).json({success:false,message:"تعذر جلب التقييمات"}) }
+  } catch(error) { logServerError(error); res.status(500).json({success:false,message:"تعذر جلب التقييمات"}) }
 })
 app.post("/api/products/:id/reviews", rateLimit("reviews", 12, 10*60*1000), async (req, res) => {
   try {
@@ -440,15 +445,15 @@ app.post("/api/products/:id/reviews", rateLimit("reviews", 12, 10*60*1000), asyn
     const product=await db.execute({sql:"SELECT id FROM products WHERE id=? AND active=1",args:[productId]}); if(!product.rows[0]) return res.status(404).json({success:false,message:"المنتج غير موجود"})
     await db.execute({sql:"INSERT INTO product_reviews(product_id,customer_name,rating,comment,status) VALUES(?,?,?,?,?)",args:[productId,name,rating,comment,"pending"]})
     res.status(201).json({success:true,message:"تم إرسال تقييمك للمراجعة"})
-  } catch(error){console.error(error);res.status(500).json({success:false,message:"تعذر إرسال التقييم"})}
+  } catch(error){logServerError(error);res.status(500).json({success:false,message:"تعذر إرسال التقييم"})}
 })
 app.get("/api/admin/reviews", requireAdmin, async (req,res)=>{
   try { const result=await db.execute("SELECT r.*,p.name AS product_name FROM product_reviews r LEFT JOIN products p ON p.id=r.product_id ORDER BY r.id DESC"); res.json({success:true,reviews:result.rows}) }
-  catch(error){console.error(error);res.status(500).json({success:false,message:"تعذر جلب التقييمات"})}
+  catch(error){logServerError(error);res.status(500).json({success:false,message:"تعذر جلب التقييمات"})}
 })
 app.patch("/api/admin/reviews/:id", requireAdmin, async (req,res)=>{
   try { const id=Number(req.params.id); if(!Number.isInteger(id)||id<=0) return res.status(400).json({success:false,message:"معرف التقييم غير صحيح"}); const status=String(req.body?.status||""); if(!["pending","approved","hidden"].includes(status)) return res.status(400).json({success:false,message:"الحالة غير صحيحة"}); const r=await db.execute({sql:"UPDATE product_reviews SET status=? WHERE id=?",args:[status,id]}); if(!r.rowsAffected)return res.status(404).json({success:false,message:"التقييم غير موجود"}); res.json({success:true}) }
-  catch(error){console.error(error);res.status(500).json({success:false,message:"تعذر تحديث التقييم"})}
+  catch(error){logServerError(error);res.status(500).json({success:false,message:"تعذر تحديث التقييم"})}
 })
 app.delete("/api/admin/reviews/:id", requireAdmin, async (req,res)=>{
   try { const id=Number(req.params.id); if(!Number.isInteger(id)||id<=0) return res.status(400).json({success:false,message:"معرف التقييم غير صحيح"}); const r=await db.execute({sql:"DELETE FROM product_reviews WHERE id=?",args:[id]}); if(!r.rowsAffected)return res.status(404).json({success:false,message:"التقييم غير موجود"});res.json({success:true}) }
@@ -466,7 +471,7 @@ app.post("/api/analytics/events", rateLimit("analytics", 120, 60*1000), async (r
       await db.execute({sql:"INSERT INTO analytics_events(event_type,product_id,path,session_id,metadata) VALUES(?,?,?,?,?)",args:[type,Number.isInteger(productId)?productId:null,String(event?.path||"").slice(0,300),String(event?.session_id||"").slice(0,120),(() => { const metadata=event?.metadata; if(metadata===undefined||metadata===null) return "{}"; try { const serialized=JSON.stringify(metadata); return serialized.length<=5000?serialized:"{}" } catch { return "{}" } })()]})
     }
     res.json({success:true})
-  }catch(error){console.error(error);res.status(500).json({success:false,message:"تعذر تسجيل الإحصائية"})}
+  }catch(error){logServerError(error);res.status(500).json({success:false,message:"تعذر تسجيل الإحصائية"})}
 })
 app.get("/api/admin/analytics", requireAdmin, async (req,res)=>{
   try {
@@ -481,7 +486,7 @@ app.get("/api/admin/analytics", requireAdmin, async (req,res)=>{
     if(ids.length){const rs=await db.execute(`SELECT id,name FROM products WHERE id IN (${ids.map(()=>'?').join(',')})`,ids); names=rs.rows}
     const nameMap=Object.fromEntries(names.map(r=>[Number(r.id),r.name]))
     res.json({success:true,days,counts,uniqueSessions,topProducts:products.rows.map(r=>({product_id:Number(r.product_id),name:nameMap[Number(r.product_id)]||"منتج",views:Number(r.views)}))})
-  }catch(error){console.error(error);res.status(500).json({success:false,message:"تعذر جلب الإحصائيات"})}
+  }catch(error){logServerError(error);res.status(500).json({success:false,message:"تعذر جلب الإحصائيات"})}
 })
 
 // ---------- coupons ----------
@@ -539,12 +544,12 @@ app.post("/api/coupons/validate", rateLimit("coupon", 30, 60*1000), async (req, 
     if (!coupon || discountCents <= 0) return res.status(400).json({ success:false, message:"الكوبون غير صالح أو لا ينطبق على هذا الطلب" })
     if (clientSubtotalCents !== subtotalCents) return res.status(409).json({ success:false, message:"تغيرت أسعار السلة، حدّثي السلة وحاولي مرة أخرى" })
     res.json({ success:true, coupon:{ code:coupon.code, type:coupon.type, value:coupon.value }, discount:fromCents(discountCents), total:fromCents(subtotalCents-discountCents) })
-  } catch(error){ console.error(error); res.status(500).json({success:false,message:"حدث خطأ أثناء التحقق من الكوبون"}) }
+  } catch(error){ logServerError(error); res.status(500).json({success:false,message:"حدث خطأ أثناء التحقق من الكوبون"}) }
 })
 
 app.get("/api/admin/coupons", requireAdmin, async (req,res)=>{
   try { const result=await db.execute("SELECT * FROM coupons ORDER BY id DESC"); res.json({success:true,coupons:result.rows}) }
-  catch(error){ console.error(error); res.status(500).json({success:false,message:"تعذر جلب الكوبونات"}) }
+  catch(error){ logServerError(error); res.status(500).json({success:false,message:"تعذر جلب الكوبونات"}) }
 })
 app.post("/api/admin/coupons", requireAdmin, async (req,res)=>{
   try {
@@ -565,7 +570,7 @@ app.post("/api/admin/coupons", requireAdmin, async (req,res)=>{
     if(!/^[A-Z0-9_-]{2,80}$/.test(normalized) || !["percent","fixed"].includes(type) || !Number.isFinite(numericValue) || numericValue<0 || (type==="percent"&&numericValue>100) || !Number.isFinite(numericMinOrder)||numericMinOrder<0 || !Number.isInteger(numericMaxUses)||numericMaxUses<0 || !Number.isInteger(numericMinItems)||numericMinItems<0 || (numericMaxDiscount!==null&&(!Number.isFinite(numericMaxDiscount)||numericMaxDiscount<0)) || (numericProductId!==null&&(!Number.isInteger(numericProductId)||numericProductId<=0)) || (category!==undefined&&category!==null&&category!==""&&!validCategories.includes(category)) || (normalizedExpires&&Number.isNaN(normalizedExpires.getTime())) || (normalizedStarts&&Number.isNaN(normalizedStarts.getTime())) || (normalizedStarts&&normalizedExpires&&normalizedStarts.getTime()>normalizedExpires.getTime())) return res.status(400).json({success:false,message:"بيانات الكوبون غير صحيحة"})
     const r=await db.execute({sql:"INSERT INTO coupons(code,type,value,value_cents,min_order,min_order_cents,max_uses,expires_at,starts_at,max_discount,max_discount_cents,min_items,product_id,category,free_shipping,active) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",args:[normalized,type,numericValue,numericValueCents,numericMinOrder,numericMinOrderCents,numericMaxUses,expiresAt||null,startsAt||null,numericMaxDiscount,numericMaxDiscountCents,numericMinItems,numericProductId,category||null,freeShipping?1:0,active===false?0:1]})
     res.status(201).json({success:true,id:Number(r.lastInsertRowid)})
-  } catch(error){ console.error(error); res.status(400).json({success:false,message:error.message?.includes("UNIQUE")?"كود الكوبون مستخدم بالفعل":"تعذر إنشاء الكوبون"}) }
+  } catch(error){ logServerError(error); res.status(400).json({success:false,message:error.message?.includes("UNIQUE")?"كود الكوبون مستخدم بالفعل":"تعذر إنشاء الكوبون"}) }
 })
 app.put("/api/admin/coupons/:id", requireAdmin, async (req,res)=>{
   try {
@@ -577,7 +582,7 @@ app.put("/api/admin/coupons/:id", requireAdmin, async (req,res)=>{
     const maxDiscountCents = maxDiscount === null ? null : toCents(maxDiscount)
     await db.execute({sql:"UPDATE coupons SET code=?,type=?,value=?,value_cents=?,min_order=?,min_order_cents=?,max_uses=?,expires_at=?,starts_at=?,max_discount=?,max_discount_cents=?,min_items=?,product_id=?,category=?,free_shipping=?,active=? WHERE id=?",args:[normalizedCode,type,value,valueCents,minOrder,minOrderCents,maxUses,nextExpires,nextStarts,maxDiscount,maxDiscountCents,minItems,productId,nextCategory,b.freeShipping===undefined?old.free_shipping:(b.freeShipping?1:0),b.active===undefined?old.active:(b.active?1:0),id]})
     res.json({success:true})
-  } catch(error){ console.error(error); res.status(400).json({success:false,message:"تعذر تعديل الكوبون"}) }
+  } catch(error){ logServerError(error); res.status(400).json({success:false,message:"تعذر تعديل الكوبون"}) }
 })
 app.delete("/api/admin/coupons/:id", requireAdmin, async (req,res)=>{ try { const id=Number(req.params.id); if(!Number.isInteger(id)||id<=0) return res.status(400).json({success:false,message:"معرف الكوبون غير صحيح"}); const r=await db.execute({sql:"DELETE FROM coupons WHERE id=?",args:[Number(req.params.id)]}); if(!r.rowsAffected)return res.status(404).json({success:false,message:"الكوبون غير موجود"});res.json({success:true}) }catch(error){res.status(500).json({success:false,message:"تعذر حذف الكوبون"})} })
 
@@ -595,7 +600,7 @@ app.get("/api/orders", requireAdmin, async (req, res) => {
     )
     res.json({ success: true, orders: ordersWithItems })
   } catch (error) {
-    console.error(error)
+    logServerError(error)
     res.status(500).json({ success: false, message: "حدث خطأ في جلب الطلبات" })
   }
 })
@@ -895,7 +900,7 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
 
     const status = Number(error?.statusCode) || 500
     if (status < 500) return res.status(status).json({ success: false, message: error.message })
-    console.error(error)
+    logServerError(error)
     res.status(500).json({ success: false, message: "حدث خطأ أثناء إنشاء الطلب" })
   }
 })
@@ -909,7 +914,7 @@ app.get("/api/orders/track/:code", rateLimit("track", 30, 10*60*1000), async (re
     const items = await db.execute({ sql: "SELECT * FROM order_items WHERE order_id = ?", args: [order.id] })
     res.json({ success: true, order: { status: order.status, total: order.total, created_at: order.created_at }, items: items.rows.map(item => ({ product_name: item.product_name, price: item.price, quantity: item.quantity, selected_color: item.selected_color, selected_size: item.selected_size })) })
   } catch (error) {
-    console.error(error)
+    logServerError(error)
     res.status(500).json({ success: false, message: "حدث خطأ" })
   }
 })
@@ -923,7 +928,7 @@ app.get("/api/orders/:id", requireAdmin, async (req, res) => {
     const items = await db.execute({ sql: "SELECT * FROM order_items WHERE order_id = ?", args: [orderId] })
     res.json({ success: true, order: result.rows[0], items: items.rows })
   } catch (error) {
-    console.error(error)
+    logServerError(error)
     res.status(500).json({ success: false, message: "حدث خطأ" })
   }
 })
@@ -1029,7 +1034,7 @@ app.patch("/api/orders/:id/status", requireAdmin, async (req, res) => {
     }
     const status = Number(error?.statusCode) || 500
     if (status < 500) return res.status(status).json({ success: false, message: error.message })
-    console.error(error)
+    logServerError(error)
     res.status(500).json({ success: false, message: "حدث خطأ أثناء تحديث الطلب" })
   }
 })
@@ -1071,7 +1076,7 @@ app.get("/api/admin/customers", requireAdmin, async (req, res) => {
     )
     res.json({ success: true, customers })
   } catch (error) {
-    console.error(error)
+    logServerError(error)
     res.status(500).json({ success: false, message: "حدث خطأ في جلب العملاء" })
   }
 })
@@ -1098,7 +1103,7 @@ app.get("/api/admin/customers/:phone/orders", requireAdmin, async (req, res) => 
 
     res.json({ success: true, orders })
   } catch (error) {
-    console.error(error)
+    logServerError(error)
     res.status(500).json({ success: false, message: "حدث خطأ في جلب طلبات العميل" })
   }
 })
@@ -1115,7 +1120,7 @@ app.post("/api/contact", rateLimit("contact", 10, 10*60*1000), async (req, res) 
     const result = await db.execute({ sql: "INSERT INTO contact_messages (name,phone,message) VALUES (?,?,?)", args: [contactName, contactPhone, contactMessage] })
     res.json({ success: true, id: Number(result.lastInsertRowid) })
   } catch (error) {
-    console.error(error)
+    logServerError(error)
     res.status(500).json({ success: false, message: "حدث خطأ أثناء إرسال الرسالة" })
   }
 })
@@ -1125,7 +1130,7 @@ app.get("/api/admin/contact-messages", requireAdmin, async (req, res) => {
     const result = await db.execute("SELECT * FROM contact_messages ORDER BY id DESC")
     res.json({ success: true, messages: result.rows })
   } catch (error) {
-    console.error(error)
+    logServerError(error)
     res.status(500).json({ success: false, message: "حدث خطأ في جلب الرسائل" })
   }
 })
@@ -1137,7 +1142,7 @@ app.patch("/api/admin/contact-messages/:id/read", requireAdmin, async (req, res)
     await db.execute({ sql: "UPDATE contact_messages SET is_read = 1 WHERE id = ?", args: [id] })
     res.json({ success: true })
   } catch (error) {
-    console.error(error)
+    logServerError(error)
     res.status(500).json({ success: false, message: "حدث خطأ أثناء التحديث" })
   }
 })
@@ -1149,7 +1154,7 @@ app.delete("/api/admin/contact-messages/:id", requireAdmin, async (req, res) => 
     await db.execute({ sql: "DELETE FROM contact_messages WHERE id = ?", args: [id] })
     res.json({ success: true })
   } catch (error) {
-    console.error(error)
+    logServerError(error)
     res.status(500).json({ success: false, message: "حدث خطأ أثناء الحذف" })
   }
 })
@@ -1162,7 +1167,7 @@ app.get("/api/settings", async (req, res) => {
     const settings = Object.fromEntries(result.rows.map((r) => [r.key, r.value]))
     res.json({ success: true, settings })
   } catch (error) {
-    console.error(error)
+    logServerError(error)
     res.status(500).json({ success: false, message: "حدث خطأ في جلب الإعدادات" })
   }
 })
@@ -1184,7 +1189,7 @@ app.put("/api/admin/settings", requireAdmin, async (req, res) => {
     }
     res.json({ success: true })
   } catch (error) {
-    console.error(error)
+    logServerError(error)
     res.status(500).json({ success: false, message: "حدث خطأ أثناء حفظ الإعدادات" })
   }
 })
