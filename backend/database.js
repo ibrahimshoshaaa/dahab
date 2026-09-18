@@ -35,6 +35,7 @@ async function initDb() {
       status TEXT NOT NULL DEFAULT 'جديد',
       tracking_code TEXT,
       idempotency_key TEXT UNIQUE,
+      idempotency_fingerprint TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -157,6 +158,12 @@ async function initDb() {
   if (!orderColumnNames.has("idempotency_key")) {
     await db.execute("ALTER TABLE orders ADD COLUMN idempotency_key TEXT")
     await db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idempotency_key ON orders(idempotency_key)")
+  }
+
+  // idempotency fingerprint migration
+  const orderColumnsForIdempotency = new Set((await db.execute("PRAGMA table_info(orders)")).rows.map((row) => row.name))
+  if (!orderColumnsForIdempotency.has("idempotency_fingerprint")) {
+    await db.execute("ALTER TABLE orders ADD COLUMN idempotency_fingerprint TEXT")
   }
 
   // order pricing history migrations
