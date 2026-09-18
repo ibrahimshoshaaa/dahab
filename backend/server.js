@@ -391,7 +391,9 @@ app.patch("/api/admin/products/:id/stock", requireAdmin, async (req, res) => {
 
 app.delete("/api/admin/products/:id", requireAdmin, async (req, res) => {
   try {
-    const result = await db.execute({ sql: "DELETE FROM products WHERE id = ?", args: [Number(req.params.id)] })
+    const productId = Number(req.params.id)
+    if (!Number.isInteger(productId) || productId <= 0) return res.status(400).json({ success: false, message: "معرف المنتج غير صحيح" })
+    const result = await db.execute({ sql: "DELETE FROM products WHERE id = ?", args: [productId] })
     if (result.rowsAffected === 0) return res.status(404).json({ success: false, message: "المنتج غير موجود" })
     res.json({ success: true })
   } catch (error) {
@@ -992,7 +994,7 @@ app.post("/api/contact", rateLimit("contact", 10, 10*60*1000), async (req, res) 
     const contactName = String(name || "").trim()
     const contactPhone = String(phone || "").replace(/\s|-/g, "")
     const contactMessage = String(message || "").trim()
-    if (!contactName || !contactPhone || !contactMessage || contactName.length > 120 || contactPhone.length > 20 || contactMessage.length > 2000) return res.status(400).json({ success: false, message: "بيانات الرسالة غير صحيحة" })
+    if (!contactName || !contactPhone || !contactMessage || contactName.length > 120 || contactPhone.length > 20 || contactMessage.length > 2000 || !/^(01[0125]\d{8}|\+?20[0125]1\d{8})$/.test(contactPhone)) return res.status(400).json({ success: false, message: "بيانات الرسالة غير صحيحة" })
     const result = await db.execute({ sql: "INSERT INTO contact_messages (name,phone,message) VALUES (?,?,?)", args: [contactName, contactPhone, contactMessage] })
     res.json({ success: true, id: Number(result.lastInsertRowid) })
   } catch (error) {
@@ -1013,7 +1015,9 @@ app.get("/api/admin/contact-messages", requireAdmin, async (req, res) => {
 
 app.patch("/api/admin/contact-messages/:id/read", requireAdmin, async (req, res) => {
   try {
-    await db.execute({ sql: "UPDATE contact_messages SET is_read = 1 WHERE id = ?", args: [req.params.id] })
+    const id = Number(req.params.id)
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ success: false, message: "معرف الرسالة غير صحيح" })
+    await db.execute({ sql: "UPDATE contact_messages SET is_read = 1 WHERE id = ?", args: [id] })
     res.json({ success: true })
   } catch (error) {
     console.error(error)
@@ -1023,7 +1027,9 @@ app.patch("/api/admin/contact-messages/:id/read", requireAdmin, async (req, res)
 
 app.delete("/api/admin/contact-messages/:id", requireAdmin, async (req, res) => {
   try {
-    await db.execute({ sql: "DELETE FROM contact_messages WHERE id = ?", args: [req.params.id] })
+    const id = Number(req.params.id)
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ success: false, message: "معرف الرسالة غير صحيح" })
+    await db.execute({ sql: "DELETE FROM contact_messages WHERE id = ?", args: [id] })
     res.json({ success: true })
   } catch (error) {
     console.error(error)
@@ -1088,6 +1094,17 @@ app.post("/api/admin/upload", requireAdmin, upload.single("image"), async (req, 
     console.error("Upload error:", error)
     res.status(500).json({ success: false, message: "فشل رفع الصورة" })
   }
+})
+
+// Normalize upload and unexpected middleware errors without exposing internal details.
+app.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    return res.status(400).json({ success: false, message: "ملف الصورة غير صالح أو حجمه أكبر من المسموح" })
+  }
+  if (error) {
+    return res.status(400).json({ success: false, message: "بيانات الطلب غير صالحة" })
+  }
+  next()
 })
 
 // ---------- start ----------
