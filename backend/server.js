@@ -372,7 +372,7 @@ app.put("/api/admin/products/:id", requireAdmin, async (req, res) => {
              sizeChart !== undefined ? JSON.stringify(sizeChart) : e.size_chart,
              materialDetails !== undefined ? materialDetails : e.material_details,
              careInstructions !== undefined ? careInstructions : e.care_instructions,
-             stock !== undefined ? Math.max(0, Number(stock)) : Number(e.stock ?? 0),
+             variantStock !== undefined && variantEntries.length > 0 ? variantTotal : (stock !== undefined ? Math.max(0, Number(stock)) : Number(e.stock ?? 0)),
              lowStockThreshold !== undefined ? Math.max(0, Number(lowStockThreshold)) : Number(e.low_stock_threshold ?? 5),
              variantStock !== undefined ? JSON.stringify(normalizedVariantStock) : (e.variant_stock || "{}"),
              id]
@@ -854,7 +854,7 @@ app.get("/api/orders/track/:code", rateLimit("track", 30, 10*60*1000), async (re
     if (!result.rows[0]) return res.status(404).json({ success: false, message: "لم يتم العثور على طلب بهذا الكود" })
     const order = result.rows[0]
     const items = await db.execute({ sql: "SELECT * FROM order_items WHERE order_id = ?", args: [order.id] })
-    res.json({ success: true, order: { id: order.id, status: order.status, total: order.total, customer_name: order.customer_name, created_at: order.created_at }, items: items.rows })
+    res.json({ success: true, order: { id: order.id, status: order.status, total: order.total, created_at: order.created_at }, items: items.rows.map(item => ({ product_name: item.product_name, price: item.price, quantity: item.quantity, selected_color: item.selected_color, selected_size: item.selected_size })) })
   } catch (error) {
     console.error(error)
     res.status(500).json({ success: false, message: "حدث خطأ" })
