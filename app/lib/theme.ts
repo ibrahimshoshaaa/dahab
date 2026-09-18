@@ -42,18 +42,21 @@ export function findFont(options: FontOption[], id: string | undefined, fallback
 }
 
 // بتحوّل قيم الـ settings (نصوص فقط من قاعدة البيانات) لكائن ثيم آمن بقيم افتراضية
+function safeColor(value: string | undefined, fallback: string) {
+  return /^#[0-9a-fA-F]{6}$/.test(value || "") ? value! : fallback
+}
+
 export function resolveTheme(settings: Record<string, string> | undefined): SiteTheme {
   const s = settings || {}
   return {
-    brand: s.theme_brand || DEFAULT_THEME.brand,
-    brandDark: s.theme_brand_dark || DEFAULT_THEME.brandDark,
-    ink: s.theme_ink || DEFAULT_THEME.ink,
-    bg: s.theme_bg || DEFAULT_THEME.bg,
-    bodyFont: s.theme_body_font || DEFAULT_THEME.bodyFont,
-    headingFont: s.theme_heading_font || DEFAULT_THEME.headingFont,
+    brand: safeColor(s.theme_brand, DEFAULT_THEME.brand),
+    brandDark: safeColor(s.theme_brand_dark, DEFAULT_THEME.brandDark),
+    ink: safeColor(s.theme_ink, DEFAULT_THEME.ink),
+    bg: safeColor(s.theme_bg, DEFAULT_THEME.bg),
+    bodyFont: BODY_FONT_OPTIONS.some((f) => f.id === s.theme_body_font) ? s.theme_body_font : DEFAULT_THEME.bodyFont,
+    headingFont: HEADING_FONT_OPTIONS.some((f) => f.id === s.theme_heading_font) ? s.theme_heading_font : DEFAULT_THEME.headingFont,
   }
 }
-
 export function buildGoogleFontsUrl(theme: SiteTheme): string {
   const body = findFont(BODY_FONT_OPTIONS, theme.bodyFont, DEFAULT_THEME.bodyFont)
   const heading = findFont(HEADING_FONT_OPTIONS, theme.headingFont, DEFAULT_THEME.headingFont)
