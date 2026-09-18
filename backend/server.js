@@ -588,6 +588,18 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
 
     const quantities = new Map()
     for (const item of items) {
+      if (!item || typeof item !== "object") {
+        return res.status(400).json({ success: false, message: "بيانات المنتجات غير صحيحة" })
+      }
+      if (typeof item.selected_color === "string" && item.selected_color.length > 100) {
+        return res.status(400).json({ success: false, message: "لون المنتج غير صحيح" })
+      }
+      if (typeof item.selected_size === "string" && item.selected_size.length > 100) {
+        return res.status(400).json({ success: false, message: "مقاس المنتج غير صحيح" })
+      }
+      if (typeof item.product_name === "string" && item.product_name.length > 200) {
+        return res.status(400).json({ success: false, message: "بيانات المنتج غير صحيحة" })
+      }
       const productId = Number(item.product_id)
       const quantity = Math.floor(Number(item.quantity))
       if (!Number.isInteger(productId) || productId <= 0 || !Number.isInteger(quantity) || quantity <= 0 || quantity > 100) {
