@@ -290,7 +290,7 @@ app.post("/api/admin/products", requireAdmin, async (req, res) => {
     } = req.body || {}
     const imageList = Array.isArray(images) ? images.filter(Boolean) : []
     const mainImage = image || imageList[0]
-    if (!name || String(name).trim().length > 200 || !["عبايات", "إكسسوارات"].includes(category) || !Number.isFinite(Number(price)) || Number(price) < 0 || !mainImage || typeof mainImage !== "string" || mainImage.length > 2000) {
+    if (!name || String(name).trim().length > 200 || !["عبايات", "إكسسوارات", "حقائب", "طرح"].includes(category) || !Number.isFinite(Number(price)) || Number(price) < 0 || !mainImage || typeof mainImage !== "string" || mainImage.length > 2000 || imageList.length > 10 || (Array.isArray(colors) && colors.length > 30) || (Array.isArray(sizes) && sizes.length > 30)) {
       return res.status(400).json({ success: false, message: "بيانات المنتج غير مكتملة" })
     }
     let slug = slugify(name)
@@ -327,11 +327,13 @@ app.put("/api/admin/products/:id", requireAdmin, async (req, res) => {
       stock, lowStockThreshold, variantStock,
     } = req.body || {}
     if (name !== undefined && (!String(name).trim() || String(name).length > 200)) return res.status(400).json({ success: false, message: "اسم المنتج غير صحيح" })
-    if (category !== undefined && !["عبايات", "إكسسوارات"].includes(category)) return res.status(400).json({ success: false, message: "تصنيف المنتج غير صحيح" })
+    if (category !== undefined && !["عبايات", "إكسسوارات", "حقائب", "طرح"].includes(category)) return res.status(400).json({ success: false, message: "تصنيف المنتج غير صحيح" })
     if (price !== undefined && (!Number.isFinite(Number(price)) || Number(price) < 0)) return res.status(400).json({ success: false, message: "السعر غير صحيح" })
     if (stock !== undefined && (!Number.isInteger(Number(stock)) || Number(stock) < 0)) return res.status(400).json({ success: false, message: "المخزون غير صحيح" })
     if (lowStockThreshold !== undefined && (!Number.isInteger(Number(lowStockThreshold)) || Number(lowStockThreshold) < 0)) return res.status(400).json({ success: false, message: "حد المخزون المنخفض غير صحيح" })
     const imageList = Array.isArray(images) ? images.filter(Boolean) : undefined
+    if (imageList && (imageList.length > 10 || imageList.some((item) => typeof item !== "string" || item.length > 2000))) return res.status(400).json({ success: false, message: "صور المنتج غير صحيحة" })
+    if (Array.isArray(colors) && colors.length > 30 || Array.isArray(sizes) && sizes.length > 30) return res.status(400).json({ success: false, message: "خيارات المنتج كثيرة جدًا" })
     const mainImage = image ?? imageList?.[0]
     await db.execute({
       sql: `UPDATE products SET slug=?,name=?,category=?,price=?,old_price=?,image=?,images=?,badge=?,colors=?,sizes=?,description=?,featured=?,best_seller=?,active=?,size_chart=?,material_details=?,care_instructions=?,stock=?,low_stock_threshold=?,variant_stock=? WHERE id=?`,
