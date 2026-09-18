@@ -345,6 +345,9 @@ async function initDb() {
   await db.execute("UPDATE coupons SET min_order_cents = CAST(ROUND(min_order * 100) AS INTEGER) WHERE min_order_cents = 0 AND min_order != 0")
   await db.execute("UPDATE coupons SET max_discount_cents = CAST(ROUND(max_discount * 100) AS INTEGER) WHERE max_discount IS NOT NULL AND max_discount_cents IS NULL")
 
+  // Story content was intentionally removed; clean legacy keys from existing databases.
+  await db.execute("DELETE FROM settings WHERE key IN ('story_title_line1','story_title_line2','story_body','story_image')")
+
   // seed settings
   const settingsCount = await db.execute("SELECT COUNT(*) AS count FROM settings")
   if (settingsCount.rows[0].count === 0) {
@@ -355,10 +358,6 @@ async function initDb() {
       hero_title_line2: "بطابع دهب",
       hero_subtitle: "عبايات مصرية بتصميمات راقية تجمع بين الاحتشام والأناقة وتناسب كل لحظة.",
       hero_button_text: "اكتشفي المجموعة",
-      story_title_line1: "لأن الأناقة",
-      story_title_line2: "تستحق أن تُحكى",
-      story_body: "في دهب نؤمن أن العباية ليست مجرد قطعة ملابس، بل تعبير عن شخصيتك. نقدم تصميمات مصرية معاصرة تجمع بين البساطة والفخامة.",
-      story_image: "https://images.unsplash.com/photo-1591369822096-ffd140ec948f?auto=format&fit=crop&w=1200&q=90",
       collection_abaya_image: "https://images.unsplash.com/photo-1591369822096-ffd140ec948f?auto=format&fit=crop&w=1200&q=90",
       collection_accessories_image: "https://images.unsplash.com/photo-1617038220319-276d3cfab638?auto=format&fit=crop&w=1200&q=90",
       accessories_item1_title: "حقائب",
