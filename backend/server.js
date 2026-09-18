@@ -448,7 +448,7 @@ app.post("/api/analytics/events", rateLimit("analytics", 120, 60*1000), async (r
     for(const event of events.slice(0,20)){
       const type=String(event?.event_type||""); if(!allowed.has(type)) continue
       const productId=event?.product_id?Number(event.product_id):null
-      await db.execute({sql:"INSERT INTO analytics_events(event_type,product_id,path,session_id,metadata) VALUES(?,?,?,?,?)",args:[type,Number.isInteger(productId)?productId:null,String(event?.path||"").slice(0,300),String(event?.session_id||"").slice(0,120),JSON.stringify(event?.metadata||{})]})
+      await db.execute({sql:"INSERT INTO analytics_events(event_type,product_id,path,session_id,metadata) VALUES(?,?,?,?,?)",args:[type,Number.isInteger(productId)?productId:null,String(event?.path||"").slice(0,300),String(event?.session_id||"").slice(0,120),(() => { const metadata=event?.metadata; if(metadata===undefined||metadata===null) return "{}"; try { const serialized=JSON.stringify(metadata); return serialized.length<=5000?serialized:"{}" } catch { return "{}" } })()]})
     }
     res.json({success:true})
   }catch(error){console.error(error);res.status(500).json({success:false,message:"تعذر تسجيل الإحصائية"})}
@@ -476,6 +476,8 @@ function couponDiscount(coupon, subtotal, items = []) {
   if (coupon.starts_at && new Date(coupon.starts_at).getTime() > now) return 0
   if (Number(coupon.min_order || 0) > subtotal) return 0
   if (coupon.max_uses && Number(coupon.used_count || 0) >= Number(coupon.max_uses)) return 0
+  if (coupon.expires_at && !Number.isFinite(new Date(coupon.expires_at).getTime())) return 0
+  if (coupon.starts_at && !Number.isFinite(new Date(coupon.starts_at).getTime())) return 0
   if (coupon.expires_at && new Date(coupon.expires_at).getTime() <= now) return 0
   if (Number(coupon.min_items || 0) > items.reduce((n,i)=>n+Number(i.quantity||0),0)) return 0
   if (coupon.product_id && !items.some(i=>Number(i.product_id)===Number(coupon.product_id))) return 0
@@ -489,7 +491,7 @@ app.post("/api/coupons/validate", rateLimit("coupon", 30, 60*1000), async (req, 
   try {
     const code = String(req.body?.code || "").trim().toUpperCase()
     const subtotal = Number(req.body?.subtotal || 0)
-    if (!code || !Number.isFinite(subtotal) || subtotal < 0) return res.status(400).json({ success:false, message:"بيانات الكوبون غير صحيحة" })
+    if (!/^[A-Z0-9_-]{2,80}$/.test(code) || !Number.isFinite(subtotal) || subtotal < 0) return res.status(400).json({ success:false, message:"بيانات الكوبون غير صحيحة" })
     const result = await db.execute({ sql:"SELECT * FROM coupons WHERE code = ?", args:[code] })
     const coupon = result.rows[0]
     const discount = couponDiscount(coupon, subtotal, Array.isArray(req.body?.items) ? req.body.items : [])
@@ -512,7 +514,10 @@ app.post("/api/admin/coupons", requireAdmin, async (req,res)=>{
     const numericMinItems=Number(minItems ?? 0)
     const numericMaxDiscount=maxDiscount===""||maxDiscount==null?null:Number(maxDiscount)
     const numericProductId=productId==null||productId===""?null:Number(productId)
-    if(!/^[A-Z0-9_-]{2,80}$/.test(normalized) || !["percent","fixed"].includes(type) || !Number.isFinite(numericValue) || numericValue<0 || (type==="percent"&&numericValue>100) || !Number.isFinite(numericMinOrder)||numericMinOrder<0 || !Number.isInteger(numericMaxUses)||numericMaxUses<0 || !Number.isInteger(numericMinItems)||numericMinItems<0 || (numericMaxDiscount!==null&&(!Number.isFinite(numericMaxDiscount)||numericMaxDiscount<0)) || (numericProductId!==null&&(!Number.isInteger(numericProductId)||numericProductId<=0))) return res.status(400).json({success:false,message:"بيانات الكوبون غير صحيحة"})
+    const validCategories=["عبايات","إكسسوارات","حقائب","طرح"]
+    const normalizedExpires=expiresAt ? new Date(expiresAt) : null
+    const normalizedStarts=startsAt ? new Date(startsAt) : null
+    if(!/^[A-Z0-9_-]{2,80}$/.test(normalized) || !["percent","fixed"].includes(type) || !Number.isFinite(numericValue) || numericValue<0 || (type==="percent"&&numericValue>100) || !Number.isFinite(numericMinOrder)||numericMinOrder<0 || !Number.isInteger(numericMaxUses)||numericMaxUses<0 || !Number.isInteger(numericMinItems)||numericMinItems<0 || (numericMaxDiscount!==null&&(!Number.isFinite(numericMaxDiscount)||numericMaxDiscount<0)) || (numericProductId!==null&&(!Number.isInteger(numericProductId)||numericProductId<=0)) || (category!==undefined&&category!==null&&category!==""&&!validCategories.includes(category)) || (normalizedExpires&&Number.isNaN(normalizedExpires.getTime())) || (normalizedStarts&&Number.isNaN(normalizedStarts.getTime())) || (normalizedStarts&&normalizedExpires&&normalizedStarts.getTime()>normalizedExpires.getTime())) return res.status(400).json({success:false,message:"بيانات الكوبون غير صحيحة"})
     const r=await db.execute({sql:"INSERT INTO coupons(code,type,value,min_order,max_uses,expires_at,starts_at,max_discount,min_items,product_id,category,free_shipping,active) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",args:[normalized,type,numericValue,numericMinOrder,numericMaxUses,expiresAt||null,startsAt||null,numericMaxDiscount,numericMinItems,numericProductId,category||null,freeShipping?1:0,active===false?0:1]})
     res.status(201).json({success:true,id:Number(r.lastInsertRowid)})
   } catch(error){ console.error(error); res.status(400).json({success:false,message:error.message?.includes("UNIQUE")?"كود الكوبون مستخدم بالفعل":"تعذر إنشاء الكوبون"}) }
@@ -521,8 +526,8 @@ app.put("/api/admin/coupons/:id", requireAdmin, async (req,res)=>{
   try {
     const id=Number(req.params.id); if(!Number.isInteger(id)||id<=0) return res.status(400).json({success:false,message:"معرف الكوبون غير صحيح"}); const ex=await db.execute({sql:"SELECT * FROM coupons WHERE id=?",args:[id]}); if(!ex.rows[0]) return res.status(404).json({success:false,message:"الكوبون غير موجود"})
     const old=ex.rows[0], b=req.body||{}, type=b.type??old.type, value=b.value!==undefined?Number(b.value):Number(old.value)
-    const minOrder=Number(b.minOrder??old.min_order), maxUses=Number(b.maxUses??old.max_uses), minItems=Number(b.minItems??old.min_items), maxDiscount=b.maxDiscount===undefined?(old.max_discount==null?null:Number(old.max_discount)):(b.maxDiscount===""||b.maxDiscount==null?null:Number(b.maxDiscount)), productId=b.productId===undefined?(old.product_id==null?null:Number(old.product_id)):(b.productId===""||b.productId==null?null:Number(b.productId)), normalizedCode=String(b.code??old.code).trim().toUpperCase(); if(!/^[A-Z0-9_-]{2,80}$/.test(normalizedCode)||!["percent","fixed"].includes(type)||!Number.isFinite(value)||value<0||(type==="percent"&&value>100)||!Number.isFinite(minOrder)||minOrder<0||!Number.isInteger(maxUses)||maxUses<0||!Number.isInteger(minItems)||minItems<0||(maxDiscount!==null&&(!Number.isFinite(maxDiscount)||maxDiscount<0))||(productId!==null&&(!Number.isInteger(productId)||productId<=0))) return res.status(400).json({success:false,message:"بيانات الكوبون غير صحيحة"})
-    await db.execute({sql:"UPDATE coupons SET code=?,type=?,value=?,min_order=?,max_uses=?,expires_at=?,starts_at=?,max_discount=?,min_items=?,product_id=?,category=?,free_shipping=?,active=? WHERE id=?",args:[normalizedCode,type,value,minOrder,maxUses,b.expiresAt===undefined?old.expires_at:(b.expiresAt||null),b.startsAt===undefined?old.starts_at:(b.startsAt||null),maxDiscount,minItems,productId,b.category===undefined?old.category:(b.category||null),b.freeShipping===undefined?old.free_shipping:(b.freeShipping?1:0),b.active===undefined?old.active:(b.active?1:0),id]})
+    const minOrder=Number(b.minOrder??old.min_order), maxUses=Number(b.maxUses??old.max_uses), minItems=Number(b.minItems??old.min_items), maxDiscount=b.maxDiscount===undefined?(old.max_discount==null?null:Number(old.max_discount)):(b.maxDiscount===""||b.maxDiscount==null?null:Number(b.maxDiscount)), productId=b.productId===undefined?(old.product_id==null?null:Number(old.product_id)):(b.productId===""||b.productId==null?null:Number(b.productId)), normalizedCode=String(b.code??old.code).trim().toUpperCase(); const nextCategory=b.category===undefined?old.category:(b.category||null); const nextExpires=b.expiresAt===undefined?old.expires_at:(b.expiresAt||null); const nextStarts=b.startsAt===undefined?old.starts_at:(b.startsAt||null); const expiresDate=nextExpires?new Date(nextExpires):null; const startsDate=nextStarts?new Date(nextStarts):null; const validCategories=["عبايات","إكسسوارات","حقائب","طرح"]; if(!/^[A-Z0-9_-]{2,80}$/.test(normalizedCode)||!["percent","fixed"].includes(type)||!Number.isFinite(value)||value<0||(type==="percent"&&value>100)||!Number.isFinite(minOrder)||minOrder<0||!Number.isInteger(maxUses)||maxUses<0||!Number.isInteger(minItems)||minItems<0||(maxDiscount!==null&&(!Number.isFinite(maxDiscount)||maxDiscount<0))||(productId!==null&&(!Number.isInteger(productId)||productId<=0)) || (nextCategory!==null&&!validCategories.includes(nextCategory)) || (expiresDate&&Number.isNaN(expiresDate.getTime())) || (startsDate&&Number.isNaN(startsDate.getTime())) || (startsDate&&expiresDate&&startsDate.getTime()>expiresDate.getTime())) return res.status(400).json({success:false,message:"بيانات الكوبون غير صحيحة"})
+    await db.execute({sql:"UPDATE coupons SET code=?,type=?,value=?,min_order=?,max_uses=?,expires_at=?,starts_at=?,max_discount=?,min_items=?,product_id=?,category=?,free_shipping=?,active=? WHERE id=?",args:[normalizedCode,type,value,minOrder,maxUses,nextExpires,nextStarts,maxDiscount,minItems,productId,nextCategory,b.freeShipping===undefined?old.free_shipping:(b.freeShipping?1:0),b.active===undefined?old.active:(b.active?1:0),id]})
     res.json({success:true})
   } catch(error){ console.error(error); res.status(400).json({success:false,message:"تعذر تعديل الكوبون"}) }
 })
