@@ -748,15 +748,106 @@ app.get("/api/orders/:id", requireAdmin, async (req, res) => {
 })
 
 app.patch("/api/orders/:id/status", requireAdmin, async (req, res) => {
+  let tx = null
   try {
     const orderId = Number(req.params.id)
     const { status } = req.body
     const allowedStatuses = ["جديد","تم التأكيد","جاري التجهيز","تم الشحن","تم التسليم","ملغي"]
-    if (!allowedStatuses.includes(status)) return res.status(400).json({ success: false, message: "حالة الطلب غير صحيحة" })
-    const result = await db.execute({ sql: "UPDATE orders SET status = ? WHERE id = ?", args: [status, orderId] })
-    if (result.rowsAffected === 0) return res.status(404).json({ success: false, message: "الطلب غير موجود" })
+    if (!Number.isInteger(orderId) || orderId <= 0 || !allowedStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: "بيانات الحالة غير صحيحة" })
+    }
+
+    tx = await db.transaction("write")
+    const orderResult = await tx.execute({ sql: "SELECT * FROM orders WHERE id = ?", args: [orderId] })
+    const order = orderResult.rows[0]
+    if (!order) {
+      await tx.rollback()
+      tx = null
+      return res.status(404).json({ success: false, message: "الطلب غير موجود" })
+    }
+
+    if (order.status === status) {
+      await tx.rollback()
+      tx = null
+      return res.json({ success: true, message: "حالة الطلب لم تتغير" })
+    }
+
+    const wasCancelled = order.status === "ملغي"
+    const willBeCancelled = status === "ملغي"
+
+    if (wasCancelled !== willBeCancelled) {
+      const items = await tx.execute({
+        sql: "SELECT product_id,quantity,selected_color,selected_size FROM order_items WHERE order_id = ?",
+        args: [orderId],
+      })
+
+      const grouped = new Map()
+      for (const item of items.rows) {
+        const productId = Number(item.product_id)
+        const qty = Number(item.quantity)
+        const key = `${item.selected_color || "-"}|${item.selected_size || "-"}`
+        const entry = grouped.get(productId) || []
+        entry.push({ qty, key })
+        grouped.set(productId, entry)
+      }
+
+      for (const [productId, lines] of grouped) {
+        const productResult = await tx.execute({
+          sql: "SELECT stock,variant_stock FROM products WHERE id = ?",
+          args: [productId],
+        })
+        const product = productResult.rows[0]
+        if (!product) throw Object.assign(new Error("أحد منتجات الطلب لم يعد موجودًا"), { statusCode: 409 })
+
+        const variantStock = safeJsonParse(product.variant_stock, {})
+        const totalQty = lines.reduce((sum, line) => sum + line.qty, 0)
+
+        if (willBeCancelled) {
+          if (Object.keys(variantStock).length) {
+            for (const line of lines) variantStock[line.key] = Number(variantStock[line.key] || 0) + line.qty
+            await tx.execute({
+              sql: "UPDATE products SET stock=stock+?,variant_stock=? WHERE id=?",
+              args: [totalQty, JSON.stringify(variantStock), productId],
+            })
+          } else {
+            await tx.execute({
+              sql: "UPDATE products SET stock=stock+? WHERE id=?",
+              args: [totalQty, productId],
+            })
+          }
+        } else {
+          if (Object.keys(variantStock).length) {
+            for (const line of lines) {
+              const available = Number(variantStock[line.key] || 0)
+              if (available < line.qty) throw Object.assign(new Error("لا يوجد مخزون كافٍ لإعادة فتح الطلب"), { statusCode: 409 })
+              variantStock[line.key] = available - line.qty
+            }
+            const updated = await tx.execute({
+              sql: "UPDATE products SET stock=stock-?,variant_stock=? WHERE id=? AND stock>=?",
+              args: [totalQty, JSON.stringify(variantStock), productId, totalQty],
+            })
+            if (updated.rowsAffected !== 1) throw Object.assign(new Error("لا يوجد مخزون كافٍ لإعادة فتح الطلب"), { statusCode: 409 })
+          } else {
+            const updated = await tx.execute({
+              sql: "UPDATE products SET stock=stock-? WHERE id=? AND stock>=?",
+              args: [totalQty, productId, totalQty],
+            })
+            if (updated.rowsAffected !== 1) throw Object.assign(new Error("لا يوجد مخزون كافٍ لإعادة فتح الطلب"), { statusCode: 409 })
+          }
+        }
+      }
+    }
+
+    await tx.execute({ sql: "UPDATE orders SET status = ? WHERE id = ?", args: [status, orderId] })
+    await tx.commit()
+    tx = null
     res.json({ success: true, message: "تم تحديث حالة الطلب" })
   } catch (error) {
+    if (tx) {
+      try { await tx.rollback() } catch {}
+    }
+    const status = Number(error?.statusCode) || 500
+    if (status < 500) return res.status(status).json({ success: false, message: error.message })
     console.error(error)
     res.status(500).json({ success: false, message: "حدث خطأ أثناء تحديث الطلب" })
   }
