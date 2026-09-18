@@ -432,11 +432,11 @@ app.get("/api/admin/reviews", requireAdmin, async (req,res)=>{
   catch(error){console.error(error);res.status(500).json({success:false,message:"تعذر جلب التقييمات"})}
 })
 app.patch("/api/admin/reviews/:id", requireAdmin, async (req,res)=>{
-  try { const status=String(req.body?.status||""); if(!["pending","approved","hidden"].includes(status)) return res.status(400).json({success:false,message:"الحالة غير صحيحة"}); const r=await db.execute({sql:"UPDATE product_reviews SET status=? WHERE id=?",args:[status,Number(req.params.id)]}); if(!r.rowsAffected)return res.status(404).json({success:false,message:"التقييم غير موجود"}); res.json({success:true}) }
+  try { const id=Number(req.params.id); if(!Number.isInteger(id)||id<=0) return res.status(400).json({success:false,message:"معرف التقييم غير صحيح"}); const status=String(req.body?.status||""); if(!["pending","approved","hidden"].includes(status)) return res.status(400).json({success:false,message:"الحالة غير صحيحة"}); const r=await db.execute({sql:"UPDATE product_reviews SET status=? WHERE id=?",args:[status,id]}); if(!r.rowsAffected)return res.status(404).json({success:false,message:"التقييم غير موجود"}); res.json({success:true}) }
   catch(error){console.error(error);res.status(500).json({success:false,message:"تعذر تحديث التقييم"})}
 })
 app.delete("/api/admin/reviews/:id", requireAdmin, async (req,res)=>{
-  try { const r=await db.execute({sql:"DELETE FROM product_reviews WHERE id=?",args:[Number(req.params.id)]}); if(!r.rowsAffected)return res.status(404).json({success:false,message:"التقييم غير موجود"});res.json({success:true}) }
+  try { const r=await db.execute({sql:"DELETE FROM product_reviews WHERE id=?",args:[id]}); if(!r.rowsAffected)return res.status(404).json({success:false,message:"التقييم غير موجود"});res.json({success:true}) }
   catch(error){res.status(500).json({success:false,message:"تعذر حذف التقييم"})}
 })
 
@@ -519,14 +519,14 @@ app.post("/api/admin/coupons", requireAdmin, async (req,res)=>{
 })
 app.put("/api/admin/coupons/:id", requireAdmin, async (req,res)=>{
   try {
-    const id=Number(req.params.id), ex=await db.execute({sql:"SELECT * FROM coupons WHERE id=?",args:[id]}); if(!ex.rows[0]) return res.status(404).json({success:false,message:"الكوبون غير موجود"})
+    const id=Number(req.params.id); if(!Number.isInteger(id)||id<=0) return res.status(400).json({success:false,message:"معرف الكوبون غير صحيح"}); const ex=await db.execute({sql:"SELECT * FROM coupons WHERE id=?",args:[id]}); if(!ex.rows[0]) return res.status(404).json({success:false,message:"الكوبون غير موجود"})
     const old=ex.rows[0], b=req.body||{}, type=b.type??old.type, value=b.value!==undefined?Number(b.value):Number(old.value)
-    if(!["percent","fixed"].includes(type)||value<0||(type==="percent"&&value>100)) return res.status(400).json({success:false,message:"بيانات الكوبون غير صحيحة"})
-    await db.execute({sql:"UPDATE coupons SET code=?,type=?,value=?,min_order=?,max_uses=?,expires_at=?,starts_at=?,max_discount=?,min_items=?,product_id=?,category=?,free_shipping=?,active=? WHERE id=?",args:[String(b.code??old.code).trim().toUpperCase(),type,value,Math.max(0,Number(b.minOrder??old.min_order)),Math.max(0,Number(b.maxUses??old.max_uses)),b.expiresAt===undefined?old.expires_at:(b.expiresAt||null),b.startsAt===undefined?old.starts_at:(b.startsAt||null),b.maxDiscount===undefined?old.max_discount:(b.maxDiscount===""||b.maxDiscount==null?null:Math.max(0,Number(b.maxDiscount))),Math.max(0,Number(b.minItems??old.min_items)),b.productId===undefined?old.product_id:(b.productId?Number(b.productId):null),b.category===undefined?old.category:(b.category||null),b.freeShipping===undefined?old.free_shipping:(b.freeShipping?1:0),b.active===undefined?old.active:(b.active?1:0),id]})
+    const minOrder=Number(b.minOrder??old.min_order), maxUses=Number(b.maxUses??old.max_uses), minItems=Number(b.minItems??old.min_items), maxDiscount=b.maxDiscount===undefined?(old.max_discount==null?null:Number(old.max_discount)):(b.maxDiscount===""||b.maxDiscount==null?null:Number(b.maxDiscount)), productId=b.productId===undefined?(old.product_id==null?null:Number(old.product_id)):(b.productId===""||b.productId==null?null:Number(b.productId)), normalizedCode=String(b.code??old.code).trim().toUpperCase(); if(!/^[A-Z0-9_-]{2,80}$/.test(normalizedCode)||!["percent","fixed"].includes(type)||!Number.isFinite(value)||value<0||(type==="percent"&&value>100)||!Number.isFinite(minOrder)||minOrder<0||!Number.isInteger(maxUses)||maxUses<0||!Number.isInteger(minItems)||minItems<0||(maxDiscount!==null&&(!Number.isFinite(maxDiscount)||maxDiscount<0))||(productId!==null&&(!Number.isInteger(productId)||productId<=0))) return res.status(400).json({success:false,message:"بيانات الكوبون غير صحيحة"})
+    await db.execute({sql:"UPDATE coupons SET code=?,type=?,value=?,min_order=?,max_uses=?,expires_at=?,starts_at=?,max_discount=?,min_items=?,product_id=?,category=?,free_shipping=?,active=? WHERE id=?",args:[normalizedCode,type,value,minOrder,maxUses,b.expiresAt===undefined?old.expires_at:(b.expiresAt||null),b.startsAt===undefined?old.starts_at:(b.startsAt||null),maxDiscount,minItems,productId,b.category===undefined?old.category:(b.category||null),b.freeShipping===undefined?old.free_shipping:(b.freeShipping?1:0),b.active===undefined?old.active:(b.active?1:0),id]})
     res.json({success:true})
   } catch(error){ console.error(error); res.status(400).json({success:false,message:"تعذر تعديل الكوبون"}) }
 })
-app.delete("/api/admin/coupons/:id", requireAdmin, async (req,res)=>{ try { const r=await db.execute({sql:"DELETE FROM coupons WHERE id=?",args:[Number(req.params.id)]}); if(!r.rowsAffected)return res.status(404).json({success:false,message:"الكوبون غير موجود"});res.json({success:true}) }catch(error){res.status(500).json({success:false,message:"تعذر حذف الكوبون"})} })
+app.delete("/api/admin/coupons/:id", requireAdmin, async (req,res)=>{ try { const id=Number(req.params.id); if(!Number.isInteger(id)||id<=0) return res.status(400).json({success:false,message:"معرف الكوبون غير صحيح"}); const r=await db.execute({sql:"DELETE FROM coupons WHERE id=?",args:[Number(req.params.id)]}); if(!r.rowsAffected)return res.status(404).json({success:false,message:"الكوبون غير موجود"});res.json({success:true}) }catch(error){res.status(500).json({success:false,message:"تعذر حذف الكوبون"})} })
 
 // ---------- orders ----------
 
@@ -827,6 +827,7 @@ app.get("/api/orders/track/:code", rateLimit("track", 30, 10*60*1000), async (re
 app.get("/api/orders/:id", requireAdmin, async (req, res) => {
   try {
     const orderId = Number(req.params.id)
+    if (!Number.isInteger(orderId) || orderId <= 0) return res.status(400).json({ success: false, message: "معرف الطلب غير صحيح" })
     const result = await db.execute({ sql: "SELECT * FROM orders WHERE id = ?", args: [orderId] })
     if (!result.rows[0]) return res.status(404).json({ success: false, message: "الطلب غير موجود" })
     const items = await db.execute({ sql: "SELECT * FROM order_items WHERE order_id = ?", args: [orderId] })
