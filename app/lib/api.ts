@@ -1,7 +1,10 @@
 import { products as mockProducts, type Product } from "../data/products"
 
 export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV !== "production" ? "http://localhost:4000" : (() => {
+    throw new Error("NEXT_PUBLIC_API_URL is required in production")
+  })())
 
 export type ApiProduct = Product & {
   id: number
@@ -112,15 +115,12 @@ export function setAdminToken(_token: string) {}
 export function clearAdminToken() {}
 
 async function adminFetch(path: string, options: RequestInit = {}) {
-  const token = getAdminToken()
-
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(options.headers || {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     cache: "no-store",
   })
