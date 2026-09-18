@@ -497,51 +497,94 @@ app.get("/api/orders", requireAdmin, async (req, res) => {
 })
 
 app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) => {
+  let tx = null
   try {
-    const { customer_name, phone, governorate, area, address, notes, items, total, coupon_code } = req.body || {}
+    const { customer_name, phone, governorate, area, address, notes, items, total, coupon_code, idempotency_key } = req.body || {}
     if (!customer_name || !phone || !governorate || !area || !address || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, message: "بيانات الطلب غير مكتملة" })
     }
 
-    const normalizedItems = []
-    const quantities = new Map()
+    const normalizedPhone = String(phone).replace(/\s|-/g, "")
+    if (!/^(01[0125]\d{8}|\+?20[0125]1\d{8})$/.test(normalizedPhone)) {
+      return res.status(400).json({ success: false, message: "رقم الهاتف غير صحيح" })
+    }
 
+    const requestKey = String(idempotency_key || "").trim()
+    if (requestKey && requestKey.length > 120) {
+      return res.status(400).json({ success: false, message: "مفتاح الطلب غير صحيح" })
+    }
+
+    if (requestKey) {
+      const existing = await db.execute({
+        sql: "SELECT id,tracking_code,total,discount FROM orders WHERE idempotency_key = ?",
+        args: [requestKey],
+      })
+      if (existing.rows[0]) {
+        const row = existing.rows[0]
+        return res.status(200).json({
+          success: true,
+          message: "تم إنشاء الطلب مسبقًا",
+          order_id: Number(row.id),
+          tracking_code: row.tracking_code,
+          discount: Number(row.discount || 0),
+          total: Number(row.total || 0),
+        })
+      }
+    }
+
+    const quantities = new Map()
     for (const item of items) {
       const productId = Number(item.product_id)
       const quantity = Math.floor(Number(item.quantity))
-      if (!Number.isInteger(productId) || productId <= 0 || !Number.isInteger(quantity) || quantity <= 0) {
+      if (!Number.isInteger(productId) || productId <= 0 || !Number.isInteger(quantity) || quantity <= 0 || quantity > 100) {
         return res.status(400).json({ success: false, message: "بيانات المنتجات غير صحيحة" })
       }
       quantities.set(productId, (quantities.get(productId) || 0) + quantity)
     }
 
-    // Never trust product names/prices sent by the browser. Re-read the current catalog.
+    tx = await db.transaction("write")
+
+    const normalizedItems = []
     for (const [productId, quantity] of quantities) {
-      const pr = await db.execute({ sql: "SELECT id,name,price,stock,active,variant_stock FROM products WHERE id = ?", args: [productId] })
+      const pr = await tx.execute({
+        sql: "SELECT id,name,category,price,stock,active,variant_stock FROM products WHERE id = ?",
+        args: [productId],
+      })
       const product = pr.rows[0]
-      if (!product || !product.active) return res.status(400).json({ success: false, message: "أحد المنتجات لم يعد متاحًا" })
+      if (!product || !product.active) throw Object.assign(new Error("أحد المنتجات لم يعد متاحًا"), { statusCode: 400 })
+
       const variantStock = safeJsonParse(product.variant_stock, {})
       const matching = items.filter((item) => Number(item.product_id) === productId)
+      const requestedVariants = new Map()
+
+      for (const item of matching) {
+        const key = `${item.selected_color || "-"}|${item.selected_size || "-"}`
+        requestedVariants.set(key, (requestedVariants.get(key) || 0) + Math.floor(Number(item.quantity)))
+      }
+
       if (Object.keys(variantStock).length) {
-        const requested = new Map()
-        for (const item of matching) {
-          const key = `${item.selected_color || "-"}|${item.selected_size || "-"}`
-          requested.set(key, (requested.get(key) || 0) + Math.floor(Number(item.quantity)))
-        }
-        for (const [key, qty] of requested) {
+        for (const [key, qty] of requestedVariants) {
           const available = Number(variantStock[key] ?? 0)
-          if (available < qty) return res.status(400).json({ success:false, message:`الكمية غير متوفرة من ${product.name} (${key.replace("|"," / ")}). المتاح: ${available}` })
+          if (available < qty) {
+            throw Object.assign(
+              new Error(`الكمية غير متوفرة من ${product.name} (${key.replace("|", " / ")}). المتاح: ${available}`),
+              { statusCode: 400 }
+            )
+          }
         }
       } else if (Number(product.stock || 0) < quantity) {
-        return res.status(400).json({ success: false, message: `الكمية غير متوفرة من ${product.name}. المتاح: ${Number(product.stock || 0)}` })
+        throw Object.assign(
+          new Error(`الكمية غير متوفرة من ${product.name}. المتاح: ${Number(product.stock || 0)}`),
+          { statusCode: 400 }
+        )
       }
+
       for (const item of matching) {
-        const qty = Math.floor(Number(item.quantity))
         normalizedItems.push({
           product_id: productId,
           product_name: product.name,
           price: Number(product.price),
-          quantity: qty,
+          quantity: Math.floor(Number(item.quantity)),
           selected_color: item.selected_color || null,
           selected_size: item.selected_size || null,
           category: product.category,
@@ -552,34 +595,52 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
     const subtotal = normalizedItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
     let discount = 0
     let coupon = null
+
     if (coupon_code) {
-      const cr = await db.execute({ sql: "SELECT * FROM coupons WHERE code = ?", args: [String(coupon_code).trim().toUpperCase()] })
+      const cr = await tx.execute({
+        sql: "SELECT * FROM coupons WHERE code = ?",
+        args: [String(coupon_code).trim().toUpperCase()],
+      })
       coupon = cr.rows[0]
       discount = couponDiscount(coupon, subtotal, normalizedItems)
-      if (!coupon || discount <= 0) return res.status(400).json({ success: false, message: "الكوبون غير صالح أو انتهت صلاحيته" })
+      if (!coupon || discount <= 0) {
+        throw Object.assign(new Error("الكوبون غير صالح أو انتهت صلاحيته"), { statusCode: 400 })
+      }
     }
 
     const finalTotal = Math.max(0, subtotal - discount)
-    if (total !== undefined && Math.abs(Number(total) - finalTotal) > 0.01) {
-      return res.status(400).json({ success: false, message: "تغيرت أسعار المنتجات، أعد مراجعة السلة ثم حاول مرة أخرى" })
+    if (total !== undefined && (!Number.isFinite(Number(total)) || Math.abs(Number(total) - finalTotal) > 0.01)) {
+      throw Object.assign(new Error("تغيرت أسعار المنتجات، أعد مراجعة السلة ثم حاول مرة أخرى"), { statusCode: 400 })
     }
 
     let trackingCode = generateTrackingCode()
-    while (true) {
-      const check = await db.execute({ sql: "SELECT 1 FROM orders WHERE tracking_code = ?", args: [trackingCode] })
+    for (;;) {
+      const check = await tx.execute({ sql: "SELECT 1 FROM orders WHERE tracking_code = ?", args: [trackingCode] })
       if (!check.rows[0]) break
       trackingCode = generateTrackingCode()
     }
 
-    const orderResult = await db.execute({
-      sql: `INSERT INTO orders (customer_name,phone,governorate,area,address,notes,total,status,tracking_code,coupon_code,discount)
-            VALUES (?,?,?,?,?,?,?,'جديد',?,?,?)`,
-      args: [customer_name, phone, governorate, area, address, notes || "", finalTotal, trackingCode, coupon ? coupon.code : null, discount],
+    const orderResult = await tx.execute({
+      sql: `INSERT INTO orders (customer_name,phone,governorate,area,address,notes,total,status,tracking_code,coupon_code,discount,idempotency_key)
+            VALUES (?,?,?,?,?,?,?,'جديد',?,?,?,?)`,
+      args: [
+        customer_name,
+        normalizedPhone,
+        governorate,
+        area,
+        address,
+        notes || "",
+        finalTotal,
+        trackingCode,
+        coupon ? coupon.code : null,
+        discount,
+        requestKey || null,
+      ],
     })
     const orderId = Number(orderResult.lastInsertRowid)
 
     for (const item of normalizedItems) {
-      await db.execute({
+      await tx.execute({
         sql: `INSERT INTO order_items (order_id,product_id,product_name,price,quantity,selected_color,selected_size)
               VALUES (?,?,?,?,?,?,?)`,
         args: [orderId, item.product_id, item.product_name, item.price, item.quantity, item.selected_color, item.selected_size],
@@ -587,38 +648,78 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
     }
 
     for (const [productId, quantity] of quantities) {
-      const current = await db.execute({sql:"SELECT stock,variant_stock FROM products WHERE id=?",args:[productId]})
-      const row=current.rows[0]
-      const variantStock=safeJsonParse(row?.variant_stock,{})
-      if(Object.keys(variantStock).length){
-        const matching=normalizedItems.filter(i=>i.product_id===productId)
-        for(const item of matching){
-          const key=`${item.selected_color || "-"}|${item.selected_size || "-"}`
-          const qty=Number(item.quantity)
-          const updatedVariant={...variantStock, [key]: Number(variantStock[key]||0)-qty}
-          if(updatedVariant[key] < 0) return res.status(409).json({success:false,message:"تغير المخزون أثناء إتمام الطلب، راجعي السلة وحاولي مرة أخرى"})
-          Object.assign(variantStock, updatedVariant)
+      const current = await tx.execute({
+        sql: "SELECT stock,variant_stock FROM products WHERE id=?",
+        args: [productId],
+      })
+      const row = current.rows[0]
+      const variantStock = safeJsonParse(row?.variant_stock, {})
+
+      if (Object.keys(variantStock).length) {
+        const matching = normalizedItems.filter((i) => i.product_id === productId)
+        for (const item of matching) {
+          const key = `${item.selected_color || "-"}|${item.selected_size || "-"}`
+          const qty = Number(item.quantity)
+          const available = Number(variantStock[key] || 0)
+          if (available < qty) {
+            throw Object.assign(new Error("تغير المخزون أثناء إتمام الطلب، راجعي السلة وحاولي مرة أخرى"), { statusCode: 409 })
+          }
+          variantStock[key] = available - qty
         }
-        const updated=await db.execute({sql:"UPDATE products SET stock=stock-?,variant_stock=? WHERE id=? AND stock>=?",args:[quantity,JSON.stringify(variantStock),productId,quantity]})
-        if(updated.rowsAffected!==1) return res.status(409).json({success:false,message:"تغير المخزون أثناء إتمام الطلب، راجعي السلة وحاولي مرة أخرى"})
+        const updated = await tx.execute({
+          sql: "UPDATE products SET stock=stock-?,variant_stock=? WHERE id=? AND stock>=?",
+          args: [quantity, JSON.stringify(variantStock), productId, quantity],
+        })
+        if (updated.rowsAffected !== 1) {
+          throw Object.assign(new Error("تغير المخزون أثناء إتمام الطلب، راجعي السلة وحاولي مرة أخرى"), { statusCode: 409 })
+        }
       } else {
-        const updated = await db.execute({sql:"UPDATE products SET stock=stock-? WHERE id=? AND stock>=?",args:[quantity,productId,quantity]})
-        if (updated.rowsAffected !== 1) return res.status(409).json({ success: false, message: "تغير المخزون أثناء إتمام الطلب، راجعي السلة وحاولي مرة أخرى" })
+        const updated = await tx.execute({
+          sql: "UPDATE products SET stock=stock-? WHERE id=? AND stock>=?",
+          args: [quantity, productId, quantity],
+        })
+        if (updated.rowsAffected !== 1) {
+          throw Object.assign(new Error("تغير المخزون أثناء إتمام الطلب، راجعي السلة وحاولي مرة أخرى"), { statusCode: 409 })
+        }
       }
     }
-    await db.execute({sql:"INSERT INTO analytics_events(event_type,path,session_id,metadata) VALUES(?,?,?,?,?)".replace("VALUES(?,?,?,?,?)","VALUES(?,?,?,?)"),args:["purchase","/checkout",null,JSON.stringify({order_id:orderId,total:finalTotal})]}).catch(()=>{})
 
     if (coupon) {
-      await db.execute({ sql: "UPDATE coupons SET used_count=used_count+1 WHERE id=?", args: [coupon.id] })
+      const used = await tx.execute({
+        sql: "UPDATE coupons SET used_count=used_count+1 WHERE id=? AND (max_uses=0 OR used_count < max_uses)",
+        args: [coupon.id],
+      })
+      if (used.rowsAffected !== 1) {
+        throw Object.assign(new Error("انتهى عدد استخدامات هذا الكوبون، حاولي مرة أخرى"), { statusCode: 409 })
+      }
     }
 
-    res.status(201).json({ success: true, message: "تم إنشاء الطلب بنجاح", order_id: orderId, tracking_code: trackingCode, discount, total: finalTotal })
+    await tx.execute({
+      sql: "INSERT INTO analytics_events(event_type,path,session_id,metadata) VALUES(?,?,?,?)",
+      args: ["purchase", "/checkout", null, JSON.stringify({ order_id: orderId, total: finalTotal })],
+    }).catch(() => {})
+
+    await tx.commit()
+    tx = null
+
+    res.status(201).json({
+      success: true,
+      message: "تم إنشاء الطلب بنجاح",
+      order_id: orderId,
+      tracking_code: trackingCode,
+      discount,
+      total: finalTotal,
+    })
   } catch (error) {
+    if (tx) {
+      try { await tx.rollback() } catch {}
+    }
+    const status = Number(error?.statusCode) || 500
+    if (status < 500) return res.status(status).json({ success: false, message: error.message })
     console.error(error)
     res.status(500).json({ success: false, message: "حدث خطأ أثناء إنشاء الطلب" })
   }
 })
-
 app.get("/api/orders/track/:code", async (req, res) => {
   try {
     const code = String(req.params.code).trim().toUpperCase()
