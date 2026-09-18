@@ -96,6 +96,12 @@ function base64Url(value) {
   return Buffer.from(value).toString("base64url")
 }
 
+function safeEqualText(a, b) {
+  const left = Buffer.from(String(a || ""))
+  const right = Buffer.from(String(b || ""))
+  return left.length === right.length && crypto.timingSafeEqual(left, right)
+}
+
 function signSession(payload) {
   const body = base64Url(JSON.stringify(payload))
   const signature = crypto.createHmac("sha256", ADMIN_SESSION_SECRET).update(body).digest("base64url")
@@ -225,8 +231,8 @@ app.post("/api/admin/login", rateLimit("login", 8, 10*60*1000), (req, res) => {
   const { username, password } = req.body || {}
   const expectedUser = ADMIN_USER || "admin"
   const expectedPass = ADMIN_PASS || "dahab123"
-  const userOk = crypto.timingSafeEqual(Buffer.from(String(username || "")), Buffer.from(String(expectedUser)))
-  const passOk = crypto.timingSafeEqual(Buffer.from(String(password || "")), Buffer.from(String(expectedPass)))
+  const userOk = safeEqualText(username, expectedUser)
+  const passOk = safeEqualText(password, expectedPass)
   if (!userOk || !passOk) {
     return res.status(401).json({ success: false, message: "بيانات الدخول غير صحيحة" })
   }
