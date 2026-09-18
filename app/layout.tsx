@@ -61,21 +61,18 @@ export default async function RootLayout({
         <link rel="dns-prefetch" href="//images.unsplash.com" />
         {/* eslint-disable-next-line @next/next/no-css-tags */}
         <link rel="stylesheet" href={fontsUrl} />
-        <style
-          // متغيرات الثيم — بتتغيّر لحظيًا مع أي تعديل في لوحة الأدمن (الشكل العام)
-          dangerouslySetInnerHTML={{
-            __html: `:root{
-              --brand:${theme.brand};
-              --brand-dark:${theme.brandDark};
-              --ink:${theme.ink};
-              --bg:${theme.bg};
-              --font-body:${bodyFont.family};
-              --font-heading:${headingFont.family};
-            }`,
-          }}
-        />
+        <meta name="theme-color" content={theme.brand} />
       </head>
-      <body>
+      <body
+        style={{
+          "--brand": theme.brand,
+          "--brand-dark": theme.brandDark,
+          "--ink": theme.ink,
+          "--bg": theme.bg,
+          "--font-body": bodyFont.family,
+          "--font-heading": headingFont.family,
+        } as React.CSSProperties}
+      >
         <PwaRegister />
         <CartProvider>
           <FavoritesProvider>{children}</FavoritesProvider>
