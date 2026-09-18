@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useCallback, useContext, useEffect, useState } from "react"
 import type { Product } from "../data/products"
 import { fetchProducts } from "../lib/api"
 
@@ -89,7 +89,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (mounted) localStorage.setItem("dahab-cart", JSON.stringify(cart))
   }, [cart, mounted])
 
-  async function refreshCartStock() {
+  const refreshCartStock = useCallback(async () => {
     if (!mounted || cart.length === 0) {
       setStockError("")
       return true
@@ -132,7 +132,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setStockChecking(false)
     }
-  }
+  }, [mounted])
 
   function addToCart(
     product: Product,
