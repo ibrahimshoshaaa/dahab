@@ -49,7 +49,7 @@ const governorates = [
 ]
 
 export default function CheckoutPage() {
-  const { cart, cartTotal, clearCart, refreshCartStock, cartHasStockIssue, stockChecking, stockError, mounted } = useCart()
+  const { cart, cartTotal, clearCart, refreshCartStock, cartHasStockIssue, stockError, mounted } = useCart()
   const [stockValidated, setStockValidated] = useState(false)
 
   const [name, setName] = useState("")
