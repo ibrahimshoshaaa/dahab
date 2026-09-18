@@ -485,11 +485,12 @@ app.get("/api/admin/analytics", requireAdmin, async (req,res)=>{
 })
 
 // ---------- coupons ----------
-function couponDiscount(coupon, subtotal, items = []) {
+function couponDiscount(coupon, subtotalCents, items = []) {
   if (!coupon || !coupon.active) return 0
   const now = Date.now()
   if (coupon.starts_at && new Date(coupon.starts_at).getTime() > now) return 0
-  if (Number(coupon.min_order || 0) > subtotal) return 0
+  const minOrderCents = coupon.min_order_cents == null ? toCents(coupon.min_order || 0) : Number(coupon.min_order_cents)
+  if (minOrderCents > subtotalCents) return 0
   if (coupon.max_uses && Number(coupon.used_count || 0) >= Number(coupon.max_uses)) return 0
   if (coupon.expires_at && !Number.isFinite(new Date(coupon.expires_at).getTime())) return 0
   if (coupon.starts_at && !Number.isFinite(new Date(coupon.starts_at).getTime())) return 0
@@ -497,15 +498,19 @@ function couponDiscount(coupon, subtotal, items = []) {
   if (Number(coupon.min_items || 0) > items.reduce((n,i)=>n+Number(i.quantity||0),0)) return 0
   if (coupon.product_id && !items.some(i=>Number(i.product_id)===Number(coupon.product_id))) return 0
   if (coupon.category && !items.some(i=>String(i.category||"")===String(coupon.category))) return 0
-  const raw = coupon.type === "fixed" ? Number(coupon.value) : subtotal * Number(coupon.value) / 100
-  const capped = coupon.max_discount !== null && coupon.max_discount !== undefined ? Math.min(raw, Number(coupon.max_discount)) : raw
-  return Math.max(0, Math.min(subtotal, capped))
+  const raw = coupon.type === "fixed" ? Number(coupon.value_cents ?? toCents(coupon.value)) : percentDiscountCents(subtotalCents, coupon.value)
+  const maxDiscountCents = coupon.max_discount_cents !== null && coupon.max_discount_cents !== undefined
+    ? Number(coupon.max_discount_cents)
+    : (coupon.max_discount !== null && coupon.max_discount !== undefined ? toCents(coupon.max_discount) : null)
+  const capped = maxDiscountCents === null ? raw : Math.min(raw, maxDiscountCents)
+  return Math.max(0, Math.min(subtotalCents, capped))
 }
 
 app.post("/api/coupons/validate", rateLimit("coupon", 30, 60*1000), async (req, res) => {
   try {
     const code = String(req.body?.code || "").trim().toUpperCase()
     const clientSubtotal = Number(req.body?.subtotal || 0)
+    const clientSubtotalCents = toCents(clientSubtotal)
     const clientItems = Array.isArray(req.body?.items) ? req.body.items : []
     if (!/^[A-Z0-9_-]{2,80}$/.test(code) || !Number.isFinite(clientSubtotal) || clientSubtotal < 0 || !clientItems.length || clientItems.length > 50) {
       return res.status(400).json({ success:false, message:"بيانات الكوبون غير صحيحة" })
@@ -515,7 +520,7 @@ app.post("/api/coupons/validate", rateLimit("coupon", 30, 60*1000), async (req, 
     const uniqueProductIds = [...new Set(productIds)]
     const products = await db.execute({ sql: `SELECT id,price,category,active FROM products WHERE id IN (${uniqueProductIds.map(() => "?").join(",")})`, args: uniqueProductIds })
     const productMap = new Map(products.rows.map(product => [Number(product.id), product]))
-    let subtotal = 0
+    let subtotalCents = 0
     const serverItems = []
     for (const item of clientItems) {
       const productId = Number(item.product_id)
@@ -524,15 +529,16 @@ app.post("/api/coupons/validate", rateLimit("coupon", 30, 60*1000), async (req, 
       if (!product || !product.active || !Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
         return res.status(400).json({ success:false, message:"بيانات المنتجات غير صحيحة" })
       }
-      subtotal += Number(product.price) * quantity
+      const productPriceCents = product.price_cents == null ? toCents(product.price) : Number(product.price_cents)
+      subtotalCents = addCents(subtotalCents, productPriceCents * quantity)
       serverItems.push({ product_id: productId, quantity, category: product.category })
     }
     const result = await db.execute({ sql:"SELECT * FROM coupons WHERE code = ?", args:[code] })
     const coupon = result.rows[0]
-    const discount = couponDiscount(coupon, subtotal, serverItems)
-    if (!coupon || discount <= 0) return res.status(400).json({ success:false, message:"الكوبون غير صالح أو لا ينطبق على هذا الطلب" })
-    if (Math.abs(clientSubtotal - subtotal) > 0.01) return res.status(409).json({ success:false, message:"تغيرت أسعار السلة، حدّثي السلة وحاولي مرة أخرى" })
-    res.json({ success:true, coupon:{ code:coupon.code, type:coupon.type, value:coupon.value }, discount, total:Math.max(0, subtotal-discount) })
+    const discountCents = couponDiscount(coupon, subtotalCents, serverItems)
+    if (!coupon || discountCents <= 0) return res.status(400).json({ success:false, message:"الكوبون غير صالح أو لا ينطبق على هذا الطلب" })
+    if (clientSubtotalCents !== subtotalCents) return res.status(409).json({ success:false, message:"تغيرت أسعار السلة، حدّثي السلة وحاولي مرة أخرى" })
+    res.json({ success:true, coupon:{ code:coupon.code, type:coupon.type, value:coupon.value }, discount:fromCents(discountCents), total:fromCents(subtotalCents-discountCents) })
   } catch(error){ console.error(error); res.status(500).json({success:false,message:"حدث خطأ أثناء التحقق من الكوبون"}) }
 })
 
@@ -545,16 +551,19 @@ app.post("/api/admin/coupons", requireAdmin, async (req,res)=>{
     const {code,type,value,minOrder,maxUses,expiresAt,startsAt,maxDiscount,minItems,productId,category,freeShipping,active}=req.body||{}
     const normalized=String(code||"").trim().toUpperCase()
     const numericValue=Number(value)
+    const numericValueCents=type==="fixed" ? toCents(numericValue) : null
     const numericMinOrder=Number(minOrder ?? 0)
+    const numericMinOrderCents=toCents(numericMinOrder)
     const numericMaxUses=Number(maxUses ?? 0)
     const numericMinItems=Number(minItems ?? 0)
     const numericMaxDiscount=maxDiscount===""||maxDiscount==null?null:Number(maxDiscount)
+    const numericMaxDiscountCents=numericMaxDiscount===null?null:toCents(numericMaxDiscount)
     const numericProductId=productId==null||productId===""?null:Number(productId)
     const validCategories=["عبايات","إكسسوارات","حقائب","طرح"]
     const normalizedExpires=expiresAt ? new Date(expiresAt) : null
     const normalizedStarts=startsAt ? new Date(startsAt) : null
     if(!/^[A-Z0-9_-]{2,80}$/.test(normalized) || !["percent","fixed"].includes(type) || !Number.isFinite(numericValue) || numericValue<0 || (type==="percent"&&numericValue>100) || !Number.isFinite(numericMinOrder)||numericMinOrder<0 || !Number.isInteger(numericMaxUses)||numericMaxUses<0 || !Number.isInteger(numericMinItems)||numericMinItems<0 || (numericMaxDiscount!==null&&(!Number.isFinite(numericMaxDiscount)||numericMaxDiscount<0)) || (numericProductId!==null&&(!Number.isInteger(numericProductId)||numericProductId<=0)) || (category!==undefined&&category!==null&&category!==""&&!validCategories.includes(category)) || (normalizedExpires&&Number.isNaN(normalizedExpires.getTime())) || (normalizedStarts&&Number.isNaN(normalizedStarts.getTime())) || (normalizedStarts&&normalizedExpires&&normalizedStarts.getTime()>normalizedExpires.getTime())) return res.status(400).json({success:false,message:"بيانات الكوبون غير صحيحة"})
-    const r=await db.execute({sql:"INSERT INTO coupons(code,type,value,min_order,max_uses,expires_at,starts_at,max_discount,min_items,product_id,category,free_shipping,active) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",args:[normalized,type,numericValue,numericMinOrder,numericMaxUses,expiresAt||null,startsAt||null,numericMaxDiscount,numericMinItems,numericProductId,category||null,freeShipping?1:0,active===false?0:1]})
+    const r=await db.execute({sql:"INSERT INTO coupons(code,type,value,value_cents,min_order,min_order_cents,max_uses,expires_at,starts_at,max_discount,max_discount_cents,min_items,product_id,category,free_shipping,active) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",args:[normalized,type,numericValue,numericValueCents,numericMinOrder,numericMinOrderCents,numericMaxUses,expiresAt||null,startsAt||null,numericMaxDiscount,numericMaxDiscountCents,numericMinItems,numericProductId,category||null,freeShipping?1:0,active===false?0:1]})
     res.status(201).json({success:true,id:Number(r.lastInsertRowid)})
   } catch(error){ console.error(error); res.status(400).json({success:false,message:error.message?.includes("UNIQUE")?"كود الكوبون مستخدم بالفعل":"تعذر إنشاء الكوبون"}) }
 })
