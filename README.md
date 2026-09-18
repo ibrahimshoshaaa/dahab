@@ -4,7 +4,7 @@
 
 ## التشغيل محليًا
 
-### 1) الباك إند (Express + SQLite)
+### 1) الباك إند (Express + Turso/libSQL)
 
 ```bash
 cd backend
