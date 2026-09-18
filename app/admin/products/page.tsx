@@ -21,7 +21,7 @@ const emptyForm = {
   id: undefined as number | undefined,
   slug: "",
   name: "",
-  category: "عبايات",
+  category: "عبايات" as ApiProduct["category"],
   price: "",
   oldPrice: "",
   images: ["", "", "", ""] as string[],
