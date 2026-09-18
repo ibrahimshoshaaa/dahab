@@ -38,8 +38,18 @@ if (!isProduction && (!ADMIN_USER || !ADMIN_PASS)) {
   console.warn("WARNING: Using development admin credentials. Set ADMIN_USER and ADMIN_PASS.")
 }
 
-const allowedOrigins = String(process.env.FRONTEND_ORIGIN || "*").split(",").map(s => s.trim()).filter(Boolean)
-app.use(cors({ origin: (origin, cb) => { if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)) return cb(null, true); return cb(new Error("Origin not allowed")); } }))
+const allowedOrigins = String(process.env.FRONTEND_ORIGIN || (isProduction ? "" : "*")).split(",").map(s => s.trim()).filter(Boolean)
+if (isProduction && allowedOrigins.length === 0) {
+  throw new Error("FRONTEND_ORIGIN is required in production")
+}
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin && !isProduction) return cb(null, true)
+    if (allowedOrigins.includes(origin)) return cb(null, true)
+    return cb(new Error("Origin not allowed"))
+  },
+  credentials: true,
+}))
 app.use(express.json({ limit: "1mb" }))
 app.disable("x-powered-by")
 app.set("trust proxy", 1)
