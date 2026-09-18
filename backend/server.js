@@ -499,12 +499,32 @@ function couponDiscount(coupon, subtotal, items = []) {
 app.post("/api/coupons/validate", rateLimit("coupon", 30, 60*1000), async (req, res) => {
   try {
     const code = String(req.body?.code || "").trim().toUpperCase()
-    const subtotal = Number(req.body?.subtotal || 0)
-    if (!/^[A-Z0-9_-]{2,80}$/.test(code) || !Number.isFinite(subtotal) || subtotal < 0) return res.status(400).json({ success:false, message:"بيانات الكوبون غير صحيحة" })
+    const clientSubtotal = Number(req.body?.subtotal || 0)
+    const clientItems = Array.isArray(req.body?.items) ? req.body.items : []
+    if (!/^[A-Z0-9_-]{2,80}$/.test(code) || !Number.isFinite(clientSubtotal) || clientSubtotal < 0 || !clientItems.length || clientItems.length > 50) {
+      return res.status(400).json({ success:false, message:"بيانات الكوبون غير صحيحة" })
+    }
+    const productIds = [...new Set(clientItems.map(item => Number(item?.product_id)).filter(Number.isInteger))]
+    if (productIds.length !== clientItems.length) return res.status(400).json({ success:false, message:"بيانات المنتجات غير صحيحة" })
+    const products = await db.execute({ sql: `SELECT id,price,category,active FROM products WHERE id IN (${productIds.map(() => "?").join(",")})`, args: productIds })
+    const productMap = new Map(products.rows.map(product => [Number(product.id), product]))
+    let subtotal = 0
+    const serverItems = []
+    for (const item of clientItems) {
+      const productId = Number(item.product_id)
+      const quantity = Number(item.quantity)
+      const product = productMap.get(productId)
+      if (!product || !product.active || !Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
+        return res.status(400).json({ success:false, message:"بيانات المنتجات غير صحيحة" })
+      }
+      subtotal += Number(product.price) * quantity
+      serverItems.push({ product_id: productId, quantity, category: product.category })
+    }
     const result = await db.execute({ sql:"SELECT * FROM coupons WHERE code = ?", args:[code] })
     const coupon = result.rows[0]
-    const discount = couponDiscount(coupon, subtotal, Array.isArray(req.body?.items) ? req.body.items : [])
+    const discount = couponDiscount(coupon, subtotal, serverItems)
     if (!coupon || discount <= 0) return res.status(400).json({ success:false, message:"الكوبون غير صالح أو لا ينطبق على هذا الطلب" })
+    if (Math.abs(clientSubtotal - subtotal) > 0.01) return res.status(409).json({ success:false, message:"تغيرت أسعار السلة، حدّثي السلة وحاولي مرة أخرى" })
     res.json({ success:true, coupon:{ code:coupon.code, type:coupon.type, value:coupon.value }, discount, total:Math.max(0, subtotal-discount) })
   } catch(error){ console.error(error); res.status(500).json({success:false,message:"حدث خطأ أثناء التحقق من الكوبون"}) }
 })
@@ -854,7 +874,7 @@ app.get("/api/orders/track/:code", rateLimit("track", 30, 10*60*1000), async (re
     if (!result.rows[0]) return res.status(404).json({ success: false, message: "لم يتم العثور على طلب بهذا الكود" })
     const order = result.rows[0]
     const items = await db.execute({ sql: "SELECT * FROM order_items WHERE order_id = ?", args: [order.id] })
-    res.json({ success: true, order: { id: order.id, status: order.status, total: order.total, created_at: order.created_at }, items: items.rows.map(item => ({ product_name: item.product_name, price: item.price, quantity: item.quantity, selected_color: item.selected_color, selected_size: item.selected_size })) })
+    res.json({ success: true, order: { status: order.status, total: order.total, created_at: order.created_at }, items: items.rows.map(item => ({ product_name: item.product_name, price: item.price, quantity: item.quantity, selected_color: item.selected_color, selected_size: item.selected_size })) })
   } catch (error) {
     console.error(error)
     res.status(500).json({ success: false, message: "حدث خطأ" })
