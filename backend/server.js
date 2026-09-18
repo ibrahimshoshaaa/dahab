@@ -374,14 +374,14 @@ app.patch("/api/admin/products/:id/stock", requireAdmin, async (req, res) => {
   try {
     const id = Number(req.params.id)
     const stock = Number(req.body?.stock)
-    if (!Number.isInteger(stock) || stock < 0) {
+    if (!Number.isInteger(id) || id <= 0 || !Number.isInteger(stock) || stock < 0) {
       return res.status(400).json({ success: false, message: "الكمية يجب أن تكون رقمًا صحيحًا غير سالب" })
     }
-    const result = await db.execute({
-      sql: "UPDATE products SET stock = ? WHERE id = ?",
-      args: [stock, id],
-    })
-    if (result.rowsAffected === 0) return res.status(404).json({ success: false, message: "المنتج غير موجود" })
+    const product = await db.execute({ sql: "SELECT variant_stock FROM products WHERE id = ?", args: [id] })
+    if (!product.rows[0]) return res.status(404).json({ success: false, message: "المنتج غير موجود" })
+    const variantStock = safeJsonParse(product.rows[0].variant_stock, {})
+    if (Object.keys(variantStock).length) return res.status(400).json({ success: false, message: "هذا المنتج يستخدم مخزون المقاسات والألوان؛ عدّلي مخزون الخيارات بدل المخزون الإجمالي" })
+    const result = await db.execute({ sql: "UPDATE products SET stock = ? WHERE id = ?", args: [stock, id] })
     res.json({ success: true, stock })
   } catch (error) {
     console.error(error)
