@@ -137,7 +137,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         item.id === id &&
         item.selectedColor === color &&
         item.selectedSize === size
-          ? { ...item, quantity }
+          ? { ...item, quantity: Math.min(item.stock ?? 99, Math.floor(quantity)) }
           : item
       )
     )
