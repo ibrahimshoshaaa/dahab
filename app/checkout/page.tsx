@@ -49,7 +49,8 @@ const governorates = [
 ]
 
 export default function CheckoutPage() {
-  const { cart, cartTotal, clearCart } = useCart()
+  const { cart, cartTotal, clearCart, refreshCartStock, cartHasStockIssue, stockChecking, stockError, mounted } = useCart()
+  const [stockValidated, setStockValidated] = useState(false)
 
   const [name, setName] = useState("")
   const [phone, setPhone] = useState("")
@@ -75,7 +76,19 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (cart.length) trackEvent({event_type:"begin_checkout",path:"/checkout",metadata:{items:cart.length}})
-  }, [])
+  }, [cart.length])
+
+  useEffect(() => {
+    if (!mounted) return
+
+    if (!cart.length) {
+      setStockValidated(true)
+      return
+    }
+
+    setStockValidated(false)
+    refreshCartStock().finally(() => setStockValidated(true))
+  }, [mounted, cart.length, refreshCartStock])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -129,6 +142,57 @@ export default function CheckoutPage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  if (!stockValidated && cart.length > 0 && !submitted) {
+    return (
+      <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
+        <SiteHeader />
+        <section className="mx-auto flex min-h-[65vh] max-w-2xl items-center justify-center px-5">
+          <div className="w-full rounded-3xl bg-white p-8 text-center shadow-sm">
+            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-[var(--brand)] border-t-transparent" />
+            <h1 className="mt-6 text-2xl font-semibold">جاري التحقق من المخزون</h1>
+            <p className="mt-3 text-sm leading-7 text-gray-500">بنراجع توفر كل منتج واختيار قبل ما نكمل للطلب.</p>
+          </div>
+        </section>
+        <StoreFooter />
+      </main>
+    )
+  }
+
+  if (stockError && cart.length > 0 && !submitted) {
+    return (
+      <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
+        <SiteHeader />
+        <section className="mx-auto flex min-h-[65vh] max-w-2xl items-center justify-center px-5">
+          <div className="w-full rounded-3xl bg-white p-8 text-center shadow-sm">
+            <h1 className="text-2xl font-semibold">تعذر التحقق من المخزون</h1>
+            <p className="mt-3 text-sm leading-7 text-gray-500">{stockError}</p>
+            <button type="button" onClick={() => { setStockValidated(false); refreshCartStock().finally(() => setStockValidated(true)) }} className="mt-6 rounded-full bg-black px-7 py-3.5 text-sm text-white">
+              إعادة التحقق
+            </button>
+            <Link href="/cart" className="mt-3 inline-flex rounded-full border border-black/10 px-7 py-3.5 text-sm">العودة للسلة</Link>
+          </div>
+        </section>
+        <StoreFooter />
+      </main>
+    )
+  }
+
+  if (cartHasStockIssue && cart.length > 0 && !submitted) {
+    return (
+      <main dir="rtl" className="min-h-screen bg-[var(--bg)]">
+        <SiteHeader />
+        <section className="mx-auto flex min-h-[65vh] max-w-2xl items-center justify-center px-5">
+          <div className="w-full rounded-3xl bg-white p-8 text-center shadow-sm">
+            <h1 className="text-2xl font-semibold">فيه منتج غير متوفر بالكمية المطلوبة</h1>
+            <p className="mt-3 text-sm leading-7 text-gray-500">رجعنا نتحقق من المخزون، وفيه اختيار نفد أو كميته أقل من المطلوب. عدّلي السلة قبل إتمام الطلب.</p>
+            <Link href="/cart" className="mt-6 inline-flex rounded-full bg-black px-7 py-3.5 text-sm text-white">العودة للسلة</Link>
+          </div>
+        </section>
+        <StoreFooter />
+      </main>
+    )
   }
 
   if (cart.length === 0 && !submitted) {
