@@ -390,12 +390,13 @@ app.put("/api/admin/products/:id", requireAdmin, async (req, res) => {
     const variantEntries = normalizedVariantStock ? Object.entries(normalizedVariantStock) : []
     const invalidVariantStock = !validVariantStockShape || (normalizedVariantStock && variantEntries.some(([key, value]) => !String(key).trim() || String(key).length > 201 || !Number.isInteger(Number(value)) || Number(value) < 0))
     if (imageList && (imageList.length > 10 || imageList.some((item) => typeof item !== "string" || item.length > 2000))) return res.status(400).json({ success: false, message: "صور المنتج غير صحيحة" })
-    if (Array.isArray(colors) && colors.length > 30 || Array.isArray(sizes) && sizes.length > 30) return res.status(400).json({ success: false, message: "خيارات المنتج كثيرة جدًا" })
+    if ((colors !== undefined && !Array.isArray(colors)) || (sizes !== undefined && !Array.isArray(sizes))) return res.status(400).json({ success: false, message: "ألوان ومقاسات المنتج غير صحيحة" })
+    if ((Array.isArray(colors) && (colors.length > 30 || colors.some((item) => typeof item !== "string" || item.trim().length === 0 || item.length > 100))) || (Array.isArray(sizes) && (sizes.length > 30 || sizes.some((item) => typeof item !== "string" || item.trim().length === 0 || item.length > 100)))) return res.status(400).json({ success: false, message: "خيارات المنتج غير صحيحة" })
     const effectiveColors = colors !== undefined ? colors : safeJsonParse(e.colors, [])
-        const effectiveSizes = sizes !== undefined ? sizes : safeJsonParse(e.sizes, [])
-        const effectiveVariantStock = normalizedVariantStock !== undefined ? normalizedVariantStock : safeJsonParse(e.variant_stock, {})
-        const effectiveStock = stock !== undefined ? Number(stock) : Number(e.stock ?? 0)
-        if (invalidVariantStock || !validateVariantStock(effectiveVariantStock, effectiveColors, effectiveSizes, effectiveStock)) return res.status(400).json({ success: false, message: "مخزون الخيارات يجب أن يطابق الألوان والمقاسات والمخزون الإجمالي" })
+    const effectiveSizes = sizes !== undefined ? sizes : safeJsonParse(e.sizes, [])
+    const effectiveVariantStock = normalizedVariantStock !== undefined ? normalizedVariantStock : safeJsonParse(e.variant_stock, {})
+    const effectiveStock = stock !== undefined ? Number(stock) : Number(e.stock ?? 0)
+    if (invalidVariantStock || !validateVariantStock(effectiveVariantStock, effectiveColors, effectiveSizes, effectiveStock)) return res.status(400).json({ success: false, message: "مخزون الخيارات يجب أن يطابق الألوان والمقاسات والمخزون الإجمالي" })
     const mainImage = image ?? imageList?.[0]
     await db.execute({
       sql: `UPDATE products SET slug=?,name=?,category=?,price=?,price_cents=?,old_price=?,old_price_cents=?,image=?,images=?,badge=?,colors=?,sizes=?,description=?,featured=?,best_seller=?,active=?,size_chart=?,material_details=?,care_instructions=?,stock=?,low_stock_threshold=?,variant_stock=? WHERE id=?`,
@@ -416,7 +417,7 @@ app.put("/api/admin/products/:id", requireAdmin, async (req, res) => {
              sizeChart !== undefined ? JSON.stringify(sizeChart) : e.size_chart,
              materialDetails !== undefined ? materialDetails : e.material_details,
              careInstructions !== undefined ? careInstructions : e.care_instructions,
-             variantStock !== undefined && variantEntries.length > 0 ? variantTotal : (stock !== undefined ? Math.max(0, Number(stock)) : Number(e.stock ?? 0)),
+             effectiveStock,
              lowStockThreshold !== undefined ? Math.max(0, Number(lowStockThreshold)) : Number(e.low_stock_threshold ?? 5),
              variantStock !== undefined ? JSON.stringify(normalizedVariantStock) : (e.variant_stock || "{}"),
              id]
