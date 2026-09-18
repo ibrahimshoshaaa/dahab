@@ -1,6 +1,7 @@
 const crypto = require("crypto")
 require("dotenv").config()
 const express = require("express")
+const cookieParser = require("cookie-parser")
 const cors = require("cors")
 const multer = require("multer")
 const { v2: cloudinary } = require("cloudinary")
@@ -26,33 +27,81 @@ const upload = multer({
 
 const app = express()
 const PORT = process.env.PORT || 4000
-const ADMIN_USER = process.env.ADMIN_USER || "admin"
-const ADMIN_PASS = process.env.ADMIN_PASS || "dahab123"
-if (process.env.NODE_ENV === "production" && (!process.env.ADMIN_USER || !process.env.ADMIN_PASS)) console.warn("WARNING: Set ADMIN_USER and ADMIN_PASS in production.")
+const isProduction = process.env.NODE_ENV === "production"
+const ADMIN_USER = process.env.ADMIN_USER
+const ADMIN_PASS = process.env.ADMIN_PASS
+const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET
+
+if (isProduction && (!ADMIN_USER || !ADMIN_PASS || !ADMIN_SESSION_SECRET)) {
+  throw new Error("ADMIN_USER, ADMIN_PASS and ADMIN_SESSION_SECRET are required in production")
+}
+if (!isProduction && (!ADMIN_USER || !ADMIN_PASS)) {
+  console.warn("WARNING: Using development admin credentials. Set ADMIN_USER and ADMIN_PASS.")
+}
 
 const allowedOrigins = String(process.env.FRONTEND_ORIGIN || "*").split(",").map(s => s.trim()).filter(Boolean)
+app.use(cookieParser())
 app.use(cors({ origin: (origin, cb) => { if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)) return cb(null, true); return cb(new Error("Origin not allowed")); } }))
 app.use(express.json({ limit: "1mb" }))
 app.disable("x-powered-by")
+app.set("trust proxy", 1)
 
 const rateBuckets = new Map()
 function rateLimit(key, limit, windowMs) {
   return (req, res, next) => {
-    const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown").split(",")[0].trim()
-    const now = Date.now(); const bucketKey = `${key}:${ip}`; const old = rateBuckets.get(bucketKey)
+    const ip = req.ip || req.socket.remoteAddress || "unknown"
+    const now = Date.now()
+    const bucketKey = key + ":" + ip
+    const old = rateBuckets.get(bucketKey)
     if (!old || now - old.started > windowMs) rateBuckets.set(bucketKey, { started: now, count: 1 })
-    else { old.count += 1; if (old.count > limit) return res.status(429).json({ success:false, message:"محاولات كثيرة، حاولي مرة أخرى بعد قليل" }) }
+    else {
+      old.count += 1
+      if (old.count > limit) return res.status(429).json({ success:false, message:"محاولات كثيرة، حاولي مرة أخرى بعد قليل" })
+    }
     next()
   }
 }
-setInterval(() => { const cutoff=Date.now()-15*60*1000; for (const [k,v] of rateBuckets) if(v.started<cutoff) rateBuckets.delete(k) }, 5*60*1000).unref()
+setInterval(() => {
+  const cutoff=Date.now()-15*60*1000
+  for (const [k,v] of rateBuckets) if(v.started<cutoff) rateBuckets.delete(k)
+}, 5*60*1000).unref()
 
-const adminTokens = new Set()
+const ADMIN_SESSION_TTL_MS = 8 * 60 * 60 * 1000
+
+function base64Url(value) {
+  return Buffer.from(value).toString("base64url")
+}
+
+function signSession(payload) {
+  const body = base64Url(JSON.stringify(payload))
+  const signature = crypto.createHmac("sha256", ADMIN_SESSION_SECRET || "dev-only-secret").update(body).digest("base64url")
+  return body + "." + signature
+}
+
+function verifySession(token) {
+  if (!token || !ADMIN_SESSION_SECRET) return null
+  const parts = String(token).split(".")
+  const body = parts[0], signature = parts[1]
+  if (!body || !signature) return null
+  const expected = crypto.createHmac("sha256", ADMIN_SESSION_SECRET).update(body).digest("base64url")
+  const a = Buffer.from(signature)
+  const b = Buffer.from(expected)
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null
+  try {
+    const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"))
+    if (!payload.exp || payload.exp <= Date.now() || payload.sub !== "admin") return null
+    return payload
+  } catch {
+    return null
+  }
+}
+
+function getAdminSession(req) {
+  return verifySession(req.cookies?.["dahab-admin-session"])
+}
 
 function requireAdmin(req, res, next) {
-  const header = req.headers.authorization || ""
-  const token = header.startsWith("Bearer ") ? header.slice(7) : null
-  if (!token || !adminTokens.has(token)) {
+  if (!getAdminSession(req)) {
     return res.status(401).json({ success: false, message: "غير مصرح لك بهذا الإجراء" })
   }
   next()
@@ -107,17 +156,29 @@ app.get("/", (req, res) => {
 
 app.post("/api/admin/login", rateLimit("login", 8, 10*60*1000), (req, res) => {
   const { username, password } = req.body || {}
-  if (username !== ADMIN_USER || password !== ADMIN_PASS) {
+  const expectedUser = ADMIN_USER || "admin"
+  const expectedPass = ADMIN_PASS || "dahab123"
+  if (username !== expectedUser || password !== expectedPass) {
     return res.status(401).json({ success: false, message: "بيانات الدخول غير صحيحة" })
   }
-  const token = crypto.randomBytes(24).toString("hex")
-  adminTokens.add(token)
-  res.json({ success: true, token })
+  const token = signSession({ sub: "admin", exp: Date.now() + ADMIN_SESSION_TTL_MS, nonce: crypto.randomBytes(16).toString("hex") })
+  res.cookie("dahab-admin-session", token, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+    maxAge: ADMIN_SESSION_TTL_MS,
+    path: "/",
+  })
+  res.json({ success: true })
 })
 
 app.post("/api/admin/logout", requireAdmin, (req, res) => {
-  const token = (req.headers.authorization || "").slice(7)
-  adminTokens.delete(token)
+  res.clearCookie("dahab-admin-session", {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+    path: "/",
+  })
   res.json({ success: true })
 })
 
