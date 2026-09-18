@@ -721,7 +721,8 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
         normalizedItems.push({
           product_id: productId,
           product_name: product.name,
-          price: Number(product.price),
+          price: product.price_cents == null ? Number(product.price) : fromCents(Number(product.price_cents)),
+          price_cents: product.price_cents == null ? toCents(product.price) : Number(product.price_cents),
           quantity: Math.floor(Number(item.quantity)),
           selected_color: item.selected_color || null,
           selected_size: item.selected_size || null,
@@ -730,8 +731,8 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
       }
     }
 
-    const subtotal = normalizedItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-    let discount = 0
+    const subtotalCents = normalizedItems.reduce((sum, item) => addCents(sum, item.price_cents * item.quantity), 0)
+    let discountCents = 0
     let coupon = null
 
     if (coupon_code) {
@@ -740,14 +741,16 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
         args: [String(coupon_code).trim().toUpperCase()],
       })
       coupon = cr.rows[0]
-      discount = couponDiscount(coupon, subtotal, normalizedItems)
-      if (!coupon || discount <= 0) {
+      discountCents = couponDiscount(coupon, subtotalCents, normalizedItems)
+      if (!coupon || discountCents <= 0) {
         throw Object.assign(new Error("الكوبون غير صالح أو انتهت صلاحيته"), { statusCode: 400 })
       }
     }
 
-    const finalTotal = Math.max(0, subtotal - discount)
-    if (total !== undefined && (!Number.isFinite(Number(total)) || Math.abs(Number(total) - finalTotal) > 0.01)) {
+    const finalTotalCents = Math.max(0, subtotalCents - discountCents)
+    const finalTotal = fromCents(finalTotalCents)
+    const discount = fromCents(discountCents)
+    if (total !== undefined && (!Number.isFinite(Number(total)) || toCents(total) !== finalTotalCents)) {
       throw Object.assign(new Error("تغيرت أسعار المنتجات، أعد مراجعة السلة ثم حاول مرة أخرى"), { statusCode: 400 })
     }
 
@@ -759,8 +762,8 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
     }
 
     const orderResult = await tx.execute({
-      sql: `INSERT INTO orders (customer_name,phone,governorate,area,address,notes,total,status,tracking_code,coupon_code,discount,idempotency_key,idempotency_fingerprint)
-            VALUES (?,?,?,?,?,?,?,'جديد',?,?,?,?,?)`,
+      sql: `INSERT INTO orders (customer_name,phone,governorate,area,address,notes,total,total_cents,status,tracking_code,coupon_code,discount,discount_cents,idempotency_key,idempotency_fingerprint)
+            VALUES (?,?,?,?,?,?,?,?,'جديد',?,?,?,?,?,?,?)`,
       args: [
         customer_name,
         normalizedPhone,
@@ -769,9 +772,11 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
         address,
         notes || "",
         finalTotal,
+        finalTotalCents,
         trackingCode,
         coupon ? coupon.code : null,
         discount,
+        discountCents,
         requestKey || null,
         requestKey ? requestFingerprint : null,
       ],
@@ -780,9 +785,9 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
 
     for (const item of normalizedItems) {
       await tx.execute({
-        sql: `INSERT INTO order_items (order_id,product_id,product_name,price,quantity,selected_color,selected_size)
-              VALUES (?,?,?,?,?,?,?)`,
-        args: [orderId, item.product_id, item.product_name, item.price, item.quantity, item.selected_color, item.selected_size],
+        sql: `INSERT INTO order_items (order_id,product_id,product_name,price,price_cents,quantity,selected_color,selected_size)
+              VALUES (?,?,?,?,?,?,?,?)`,
+        args: [orderId, item.product_id, item.product_name, item.price, item.price_cents, item.quantity, item.selected_color, item.selected_size],
       })
     }
 
