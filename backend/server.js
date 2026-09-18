@@ -273,7 +273,7 @@ app.post("/api/admin/products", requireAdmin, async (req, res) => {
     } = req.body || {}
     const imageList = Array.isArray(images) ? images.filter(Boolean) : []
     const mainImage = image || imageList[0]
-    if (!name || !category || price === undefined || !mainImage) {
+    if (!name || String(name).trim().length > 200 || !["عبايات", "إكسسوارات"].includes(category) || !Number.isFinite(Number(price)) || Number(price) < 0 || !mainImage || typeof mainImage !== "string" || mainImage.length > 2000) {
       return res.status(400).json({ success: false, message: "بيانات المنتج غير مكتملة" })
     }
     let slug = slugify(name)
