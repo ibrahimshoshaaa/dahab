@@ -118,13 +118,13 @@ test("concurrent last-item orders allow only one purchase", async () => {
     createOrder(productId, "concurrent-key-2"),
   ])
   const successes = results.filter(({ response }) => response.status === 201)
-  assert.equal(successes.length, 1)
+  assert.equal(successes.length, 1, JSON.stringify(results.map(({ response, body }) => ({ status: response.status, body }))))
 })
 
 test("idempotency returns the same order and rejects a different payload", async () => {
   const productId = await createProduct("Idempotent Product", 3, 150)
   const first = await createOrder(productId, "idempotency-key-1", 1, 150)
-  assert.equal(first.response.status, 201)
+  assert.equal(first.response.status, 201, JSON.stringify(first.body))
   const replay = await createOrder(productId, "idempotency-key-1", 1, 150)
   assert.equal(replay.response.status, 200)
   assert.equal(replay.body.order_id, first.body.order_id)
@@ -135,7 +135,7 @@ test("idempotency returns the same order and rejects a different payload", async
 test("cancel and reopen restore and consume stock exactly once", async () => {
   const productId = await createProduct("Cancel Reopen Product", 1, 200)
   const order = await createOrder(productId, "cancel-reopen-key", 1, 200)
-  assert.equal(order.response.status, 201)
+  assert.equal(order.response.status, 201, JSON.stringify(order.body))
 
   let response = await request(`/api/orders/${order.body.order_id}/status`, {
     method: "PATCH",
