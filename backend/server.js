@@ -504,9 +504,10 @@ app.post("/api/coupons/validate", rateLimit("coupon", 30, 60*1000), async (req, 
     if (!/^[A-Z0-9_-]{2,80}$/.test(code) || !Number.isFinite(clientSubtotal) || clientSubtotal < 0 || !clientItems.length || clientItems.length > 50) {
       return res.status(400).json({ success:false, message:"بيانات الكوبون غير صحيحة" })
     }
-    const productIds = [...new Set(clientItems.map(item => Number(item?.product_id)).filter(Number.isInteger))]
-    if (productIds.length !== clientItems.length) return res.status(400).json({ success:false, message:"بيانات المنتجات غير صحيحة" })
-    const products = await db.execute({ sql: `SELECT id,price,category,active FROM products WHERE id IN (${productIds.map(() => "?").join(",")})`, args: productIds })
+    const productIds = clientItems.map(item => Number(item?.product_id))
+    if (productIds.some((id) => !Number.isInteger(id) || id <= 0)) return res.status(400).json({ success:false, message:"بيانات المنتجات غير صحيحة" })
+    const uniqueProductIds = [...new Set(productIds)]
+    const products = await db.execute({ sql: `SELECT id,price,category,active FROM products WHERE id IN (${uniqueProductIds.map(() => "?").join(",")})`, args: uniqueProductIds })
     const productMap = new Map(products.rows.map(product => [Number(product.id), product]))
     let subtotal = 0
     const serverItems = []
@@ -843,11 +844,17 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
     if (requestKey) {
       try {
         const existing = await db.execute({
-          sql: "SELECT id,tracking_code,total,discount FROM orders WHERE idempotency_key = ?",
+          sql: "SELECT id,tracking_code,total,discount,idempotency_fingerprint,phone FROM orders WHERE idempotency_key = ?",
           args: [requestKey],
         })
         if (existing.rows[0]) {
           const row = existing.rows[0]
+          if (row.idempotency_fingerprint && row.idempotency_fingerprint !== requestFingerprint) {
+            return res.status(409).json({ success: false, message: "مفتاح الطلب مستخدم لطلب مختلف" })
+          }
+          if (!row.idempotency_fingerprint && String(row.phone) !== normalizedPhone) {
+            return res.status(409).json({ success: false, message: "مفتاح الطلب مستخدم لطلب مختلف" })
+          }
           return res.status(200).json({
             success: true,
             message: "تم إنشاء الطلب مسبقًا",
