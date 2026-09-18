@@ -62,13 +62,22 @@ app.disable("x-powered-by")
 app.set("trust proxy", 1)
 
 const rateBuckets = new Map()
+const MAX_RATE_BUCKETS = 10000
 function rateLimit(key, limit, windowMs) {
   return (req, res, next) => {
     const ip = req.ip || req.socket.remoteAddress || "unknown"
     const now = Date.now()
     const bucketKey = key + ":" + ip
     const old = rateBuckets.get(bucketKey)
-    if (!old || now - old.started > windowMs) rateBuckets.set(bucketKey, { started: now, count: 1 })
+    if (!old || now - old.started > windowMs) {
+      if (rateBuckets.size >= MAX_RATE_BUCKETS && !old) {
+        for (const [k, v] of rateBuckets) {
+          if (now - v.started > windowMs) rateBuckets.delete(k)
+          if (rateBuckets.size < MAX_RATE_BUCKETS) break
+        }
+      }
+      rateBuckets.set(bucketKey, { started: now, count: 1 })
+    }
     else {
       old.count += 1
       if (old.count > limit) return res.status(429).json({ success:false, message:"محاولات كثيرة، حاولي مرة أخرى بعد قليل" })
@@ -216,7 +225,9 @@ app.post("/api/admin/login", rateLimit("login", 8, 10*60*1000), (req, res) => {
   const { username, password } = req.body || {}
   const expectedUser = ADMIN_USER || "admin"
   const expectedPass = ADMIN_PASS || "dahab123"
-  if (username !== expectedUser || password !== expectedPass) {
+  const userOk = crypto.timingSafeEqual(Buffer.from(String(username || "")), Buffer.from(String(expectedUser)))
+  const passOk = crypto.timingSafeEqual(Buffer.from(String(password || "")), Buffer.from(String(expectedPass)))
+  if (!userOk || !passOk) {
     return res.status(401).json({ success: false, message: "بيانات الدخول غير صحيحة" })
   }
   const token = signSession({ sub: "admin", exp: Date.now() + ADMIN_SESSION_TTL_MS, nonce: crypto.randomBytes(16).toString("hex") })
@@ -513,7 +524,7 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
   let tx = null
   try {
     const { customer_name, phone, governorate, area, address, notes, items, total, coupon_code, idempotency_key } = req.body || {}
-    if (!customer_name || !phone || !governorate || !area || !address || !Array.isArray(items) || items.length === 0) {
+    if (!customer_name || !phone || !governorate || !area || !address || !Array.isArray(items) || items.length === 0 || items.length > 50) {
       return res.status(400).json({ success: false, message: "بيانات الطلب غير مكتملة" })
     }
 
@@ -523,7 +534,7 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
     }
 
     const requestKey = String(idempotency_key || "").trim()
-    if (requestKey && requestKey.length > 120) {
+    if (requestKey && (requestKey.length > 120 || requestKey.length < 8)) {
       return res.status(400).json({ success: false, message: "مفتاح الطلب غير صحيح" })
     }
 
@@ -756,9 +767,10 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
     res.status(500).json({ success: false, message: "حدث خطأ أثناء إنشاء الطلب" })
   }
 })
-app.get("/api/orders/track/:code", async (req, res) => {
+app.get("/api/orders/track/:code", rateLimit("track", 30, 10*60*1000), async (req, res) => {
   try {
     const code = String(req.params.code).trim().toUpperCase()
+    if (!/^[A-Z2-9]{8}$/.test(code)) return res.status(400).json({ success: false, message: "كود التتبع غير صحيح" })
     const result = await db.execute({ sql: "SELECT * FROM orders WHERE tracking_code = ?", args: [code] })
     if (!result.rows[0]) return res.status(404).json({ success: false, message: "لم يتم العثور على طلب بهذا الكود" })
     const order = result.rows[0]
@@ -933,8 +945,8 @@ app.get("/api/admin/customers", requireAdmin, async (req, res) => {
 
 app.get("/api/admin/customers/:phone/orders", requireAdmin, async (req, res) => {
   try {
-    const phone = String(req.params.phone || "").trim()
-    if (!phone) return res.status(400).json({ success: false, message: "رقم الهاتف غير صحيح" })
+    const phone = String(req.params.phone || "").replace(/\s|-/g, "").trim()
+    if (!/^(01[0125]\d{8}|\+?20[0125]1\d{8})$/.test(phone)) return res.status(400).json({ success: false, message: "رقم الهاتف غير صحيح" })
 
     const result = await db.execute({
       sql: "SELECT * FROM orders WHERE phone = ? ORDER BY id DESC",
@@ -963,8 +975,11 @@ app.get("/api/admin/customers/:phone/orders", requireAdmin, async (req, res) => 
 app.post("/api/contact", rateLimit("contact", 10, 10*60*1000), async (req, res) => {
   try {
     const { name, phone, message } = req.body || {}
-    if (!name || !phone || !message) return res.status(400).json({ success: false, message: "من فضلك أكملي كل الحقول" })
-    const result = await db.execute({ sql: "INSERT INTO contact_messages (name,phone,message) VALUES (?,?,?)", args: [name, phone, message] })
+    const contactName = String(name || "").trim()
+    const contactPhone = String(phone || "").replace(/\s|-/g, "")
+    const contactMessage = String(message || "").trim()
+    if (!contactName || !contactPhone || !contactMessage || contactName.length > 120 || contactPhone.length > 20 || contactMessage.length > 2000) return res.status(400).json({ success: false, message: "بيانات الرسالة غير صحيحة" })
+    const result = await db.execute({ sql: "INSERT INTO contact_messages (name,phone,message) VALUES (?,?,?)", args: [contactName, contactPhone, contactMessage] })
     res.json({ success: true, id: Number(result.lastInsertRowid) })
   } catch (error) {
     console.error(error)
@@ -1018,7 +1033,13 @@ app.get("/api/settings", async (req, res) => {
 app.put("/api/admin/settings", requireAdmin, async (req, res) => {
   try {
     const updates = req.body || {}
+    if (!updates || typeof updates !== "object" || Array.isArray(updates) || Object.keys(updates).length > 100) {
+      return res.status(400).json({ success: false, message: "بيانات الإعدادات غير صحيحة" })
+    }
     for (const [key, value] of Object.entries(updates)) {
+      if (!/^[a-zA-Z0-9_]{1,80}$/.test(key) || String(value).length > 10000) {
+        return res.status(400).json({ success: false, message: "بيانات الإعدادات غير صحيحة" })
+      }
       await db.execute({
         sql: "INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
         args: [key, String(value)]
@@ -1051,7 +1072,7 @@ app.post("/api/admin/upload", requireAdmin, upload.single("image"), async (req, 
     res.json({ success: true, url: result.secure_url })
   } catch (error) {
     console.error("Upload error:", error)
-    res.status(500).json({ success: false, message: "فشل رفع الصورة: " + error.message })
+    res.status(500).json({ success: false, message: "فشل رفع الصورة" })
   }
 })
 
