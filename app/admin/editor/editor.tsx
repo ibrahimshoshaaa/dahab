@@ -205,7 +205,7 @@ export default function AdminPagesEditor() {
         )}
 
         <div className="mt-8 flex justify-end">
-          <SaveBtn />
+          <SaveBtn saving={saving} saved={saved} onSave={handleSave} />
         </div>
       </section>
     </main>
