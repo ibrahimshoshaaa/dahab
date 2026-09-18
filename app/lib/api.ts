@@ -100,26 +100,20 @@ export async function fetchOrderByCode(code: string) {
 
 // ---------- admin ----------
 
-const TOKEN_KEY = "dahab-admin-token"
-
 export function getAdminToken() {
-  if (typeof window === "undefined") return null
-  return localStorage.getItem(TOKEN_KEY)
+  return null
 }
 
-export function setAdminToken(token: string) {
-  localStorage.setItem(TOKEN_KEY, token)
-}
+export function setAdminToken(_token: string) {}
 
-export function clearAdminToken() {
-  localStorage.removeItem(TOKEN_KEY)
-}
+export function clearAdminToken() {}
 
 async function adminFetch(path: string, options: RequestInit = {}) {
   const token = getAdminToken()
 
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(options.headers || {}),
@@ -140,6 +134,7 @@ async function adminFetch(path: string, options: RequestInit = {}) {
 export async function adminLogin(username: string, password: string) {
   const res = await fetch(`${API_URL}/api/admin/login`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
   })
@@ -150,8 +145,7 @@ export async function adminLogin(username: string, password: string) {
     throw new Error(data.message || "بيانات الدخول غير صحيحة")
   }
 
-  setAdminToken(data.token)
-  return data.token as string
+  return true
 }
 
 export function adminLogout() {
@@ -277,7 +271,8 @@ export async function uploadImage(file: File): Promise<string> {
   const token = getAdminToken()
   const res = await fetch(`${API_URL}/api/admin/upload`, {
     method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: "include",
+    headers: {},
     body: formData,
   })
 
