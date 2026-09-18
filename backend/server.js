@@ -518,7 +518,7 @@ app.post("/api/coupons/validate", rateLimit("coupon", 30, 60*1000), async (req, 
     const productIds = clientItems.map(item => Number(item?.product_id))
     if (productIds.some((id) => !Number.isInteger(id) || id <= 0)) return res.status(400).json({ success:false, message:"بيانات المنتجات غير صحيحة" })
     const uniqueProductIds = [...new Set(productIds)]
-    const products = await db.execute({ sql: `SELECT id,price,category,active FROM products WHERE id IN (${uniqueProductIds.map(() => "?").join(",")})`, args: uniqueProductIds })
+    const products = await db.execute({ sql: `SELECT id,price,price_cents,category,active FROM products WHERE id IN (${uniqueProductIds.map(() => "?").join(",")})`, args: uniqueProductIds })
     const productMap = new Map(products.rows.map(product => [Number(product.id), product]))
     let subtotalCents = 0
     const serverItems = []
@@ -685,7 +685,7 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
     const normalizedItems = []
     for (const [productId, quantity] of quantities) {
       const pr = await tx.execute({
-        sql: "SELECT id,name,category,price,stock,active,variant_stock FROM products WHERE id = ?",
+        sql: "SELECT id,name,category,price,price_cents,stock,active,variant_stock FROM products WHERE id = ?",
         args: [productId],
       })
       const product = pr.rows[0]
