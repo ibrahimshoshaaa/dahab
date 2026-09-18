@@ -602,13 +602,16 @@ app.get("/api/orders", requireAdmin, async (req, res) => {
 
 app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) => {
   let tx = null
+  let requestKey = ""
+  let requestFingerprint = ""
+  let normalizedPhone = ""
   try {
     const { customer_name, phone, governorate, area, address, notes, items, total, coupon_code, idempotency_key } = req.body || {}
     if (!customer_name || !phone || !governorate || !area || !address || !Array.isArray(items) || items.length === 0 || items.length > 50) {
       return res.status(400).json({ success: false, message: "بيانات الطلب غير مكتملة" })
     }
 
-    const normalizedPhone = String(phone).replace(/\s|-/g, "")
+    normalizedPhone = String(phone).replace(/\s|-/g, "")
     if (String(customer_name).trim().length > 120 || String(governorate).trim().length > 80 || String(area).trim().length > 120 || String(address).trim().length > 500 || String(notes || "").length > 1000) {
       return res.status(400).json({ success: false, message: "بيانات العميل طويلة جدًا" })
     }
@@ -616,7 +619,7 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
       return res.status(400).json({ success: false, message: "رقم الهاتف غير صحيح" })
     }
 
-    const requestKey = String(idempotency_key || "").trim()
+    requestKey = String(idempotency_key || "").trim()
     if (requestKey && (requestKey.length > 120 || requestKey.length < 8)) {
       return res.status(400).json({ success: false, message: "مفتاح الطلب غير صحيح" })
     }
@@ -643,7 +646,7 @@ app.post("/api/orders", rateLimit("orders", 20, 10*60*1000), async (req, res) =>
       quantities.set(productId, (quantities.get(productId) || 0) + quantity)
     }
 
-    const requestFingerprint = crypto.createHash("sha256").update(JSON.stringify({
+    requestFingerprint = crypto.createHash("sha256").update(JSON.stringify({
       customer_name: String(customer_name).trim(),
       phone: normalizedPhone,
       governorate: String(governorate).trim(),
