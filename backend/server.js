@@ -380,7 +380,7 @@ app.get("/api/products/:id/reviews", async (req, res) => {
     res.json({ success:true, reviews:rows, average, count:rows.length })
   } catch(error) { console.error(error); res.status(500).json({success:false,message:"تعذر جلب التقييمات"}) }
 })
-app.post("/api/products/:id/reviews", async (req, res) => {
+app.post("/api/products/:id/reviews", rateLimit("reviews", 12, 10*60*1000), async (req, res) => {
   try {
     const productId=Number(req.params.id), name=String(req.body?.customer_name||"").trim(), comment=String(req.body?.comment||"").trim(), rating=Number(req.body?.rating)
     if(!Number.isInteger(productId)||!name||name.length>80||!Number.isInteger(rating)||rating<1||rating>5||!comment||comment.length>500) return res.status(400).json({success:false,message:"من فضلك أدخل تقييمًا صحيحًا"})
