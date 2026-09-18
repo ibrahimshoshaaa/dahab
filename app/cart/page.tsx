@@ -26,6 +26,7 @@ export default function CartPage() {
     cartHasStockIssue,
     stockChecking,
     stockError,
+    stockNotice,
   } = useCart()
 
   useEffect(() => {
@@ -69,6 +70,12 @@ export default function CartPage() {
             </p>
           )}
         </div>
+
+          {stockNotice && !stockError && (
+            <div className="mb-6 rounded-2xl border border-[var(--brand)]/20 bg-[var(--brand-tint)] px-4 py-3 text-center text-sm text-[var(--brand-dark)]">
+              {stockNotice}
+            </div>
+          )}
 
         {cart.length === 0 ? (
 
